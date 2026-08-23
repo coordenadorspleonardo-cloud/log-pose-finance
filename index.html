@@ -99,7 +99,7 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 
 /* Aparência panel */
 .appearance-btn{position:relative;}
-.appearance-panel{position:absolute;right:0;top:40px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:290px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.25);max-height:480px;overflow-y:auto;display:none;color:var(--text);}
+.appearance-panel{position:fixed;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:290px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.25);max-height:480px;overflow-y:auto;display:none;color:var(--text);}
 .appearance-panel.open{display:block;}
 .appearance-panel p.lbl{font-size:12px;color:var(--muted);margin:0 0 10px;}
 .preset-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);position:relative;cursor:pointer;margin:0 8px 8px 0;}
@@ -519,9 +519,23 @@ function renderAppearancePanel(){
   p.querySelectorAll("[data-chartcoloridx]").forEach(inp=>inp.oninput=()=>setChartColor(Number(inp.dataset.chartcoloridx),inp.value));
   p.querySelectorAll("[data-style]").forEach(b=>b.onclick=()=>{chartStyle=b.dataset.style;scheduleSave();renderAll();renderAppearancePanel();});
 }
-document.getElementById("btnAparencia").onclick=(e)=>{e.stopPropagation();document.getElementById("appearancePanel").classList.toggle("open");};
+document.getElementById("btnAparencia").onclick=(e)=>{
+  e.stopPropagation();
+  const panel=document.getElementById("appearancePanel");
+  const willOpen=!panel.classList.contains("open");
+  panel.classList.toggle("open");
+  if(willOpen){
+    const r=e.currentTarget.getBoundingClientRect();
+    const panelWidth=290;
+    let left=r.right-panelWidth;
+    left=Math.max(8,Math.min(left,window.innerWidth-panelWidth-8));
+    panel.style.top=(r.bottom+8)+"px";
+    panel.style.left=left+"px";
+  }
+};
 document.addEventListener("click",()=>document.getElementById("appearancePanel").classList.remove("open"));
 document.getElementById("appearancePanel").addEventListener("click",e=>e.stopPropagation());
+window.addEventListener("resize",()=>document.getElementById("appearancePanel").classList.remove("open"));
 
 // ───────── RENDER: TABELA MENSAL (genérica) ─────────
 function monthlyTableHTML(items,section,accent,lockedRow){
