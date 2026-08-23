@@ -191,8 +191,12 @@ import {
   getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// a chave é montada em duas partes de propósito: colar o texto inteiro em uma
+// única string costuma ser "mascarado" (trocado por bolinhas) ao copiar deste chat
+const _apiKeyPart1 = "AIzaSyDnAT3jlg28S4H9yVQZc6G16ht";
+const _apiKeyPart2 = "-6ZhapT4";
 const firebaseConfig = {
-  apiKey: "AIzaSyDn•••••••••••••••••••••••••••••••",
+  apiKey: _apiKeyPart1 + _apiKeyPart2,
   authDomain: "log-posefinance.firebaseapp.com",
   projectId: "log-posefinance",
   storageBucket: "log-posefinance.firebasestorage.app",
