@@ -26,6 +26,7 @@ input[type=number]{-moz-appearance:textfield;}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;}
 .fin-input:focus{outline:none;background:#1F7A5C22;}
 a{color:inherit;}
+#debugBox{position:fixed;bottom:8px;left:8px;right:8px;background:#000;color:#0f0;font-family:monospace;font-size:11px;padding:8px;border-radius:6px;z-index:9999;max-height:120px;overflow:auto;display:none;white-space:pre-wrap;word-break:break-all;}
 
 /* LOGIN */
 #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;}
@@ -113,6 +114,7 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 </style>
 </head>
 <body>
+<div id="debugBox"></div>
 
 <!-- LOGIN -->
 <div id="loginScreen">
@@ -190,13 +192,21 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDn•••••••••••••••••••••••••••••••",
+  apiKey: "AIzaSyDnAT3jlg28S4H9yVQZc6G16ht-6ZhapT4",
   authDomain: "log-posefinance.firebaseapp.com",
   projectId: "log-posefinance",
   storageBucket: "log-posefinance.firebasestorage.app",
   messagingSenderId: "645195653865",
   appId: "1:645195653865:web:9325398784bcbf6927c678"
 };
+
+// caixinha verde de debug no rodapé — mostra a config real que o navegador está usando
+(function(){
+  const box=document.getElementById("debugBox");
+  box.style.display="block";
+  box.textContent="apiKey usada (tamanho "+firebaseConfig.apiKey.length+"): "+JSON.stringify(firebaseConfig.apiKey)+"\ncodificada: "+encodeURIComponent(firebaseConfig.apiKey);
+})();
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -870,29 +880,4 @@ function renderComparar(c){
   if(chartCompLine) chartCompLine.destroy();
   chartCompLine=new Chart(document.getElementById("compLineChart"),{type:"line",data:{labels:MONTHS,datasets:yearKeys.map((y,i)=>({label:y,data:perYear[y],borderColor:chartColors[i%8],tension:.3}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:t.text}}},scales:{x:{ticks:{color:t.muted}},y:{ticks:{color:t.muted}}}}});
 
-  if(chartCompBar) chartCompBar.destroy();
-  chartCompBar=new Chart(document.getElementById("compBarChart"),{data:{labels:yearKeys,datasets:[
-    {type:"bar",label:"Faturamento",data:totalsRows.map(r=>r.inc),backgroundColor:t.positive},
-    {type:"bar",label:"Despesas",data:totalsRows.map(r=>r.exp),backgroundColor:t.negative},
-    {type:"line",label:"Saldo",data:totalsRows.map(r=>r.saldo),borderColor:t.accent2}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:t.text}}},scales:{x:{ticks:{color:t.muted}},y:{ticks:{color:t.muted}}}}});
-}
-
-// ───────── DISPATCH ─────────
-function renderAll(){
-  if(!loaded) return;
-  const c=document.getElementById("content");
-  if(tab==="dashboard") renderDashboard(c);
-  else if(tab==="faturamento") renderFaturamento(c);
-  else if(tab==="despesas") renderDespesas(c);
-  else if(tab==="patrimonio") renderPatrimonio(c);
-  else if(tab==="devedores") renderDevedores(c);
-  else if(tab==="comparar") renderComparar(c);
-}
-
-if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
-}
-</script>
-</body>
-</html>
+  if(chartCompBar) chartCompBar.destro
