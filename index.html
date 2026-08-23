@@ -1,3 +1,12 @@
+Fonte do Log Pose
+index.html completo e atualizado — clique em copiar e cole direto no lugar do arquivo no GitHub.
+
+Selecionar tudo
+
+Copiar tudo
+1.151 linhas · 81.339 caracteres
+Se o botão não funcionar, clique dentro do código, Ctrl+A e depois Ctrl+C.
+index.html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -72,6 +81,7 @@ td.num{text-align:right;font-family:var(--mono);}
 tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono);}
 .cell-input{border:none;background:transparent;width:100%;font-family:inherit;font-size:13px;padding:5px 4px;color:var(--text);}
 .cell-input.num{width:58px;text-align:right;font-family:var(--mono);font-size:12.5px;}
+.cell-input.wide{min-width:210px;}
 .icon-btn{border:none;background:transparent;cursor:pointer;color:var(--muted);display:inline-flex;padding:4px;}
 .icon-btn.del{color:var(--negative);}
 .icon-btn.rec.on{color:var(--accent2);}
@@ -315,6 +325,8 @@ let colors={...PRESETS[0].colors}, chartColors=DEFAULT_CHART_COLORS.slice(), cha
 let budgets={}, goals=[];
 let tab="dashboard";
 let openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
+let wrapNames=false; // exibir nomes completos (larga a coluna) em todas as tabelas mensais
+let dashShowAllLanc=false; // mostrar todos os lançamentos do painel, não só os 8 principais
 let saveTimer=null, applyingRemote=false, unsubState=null;
 let chartDash=null, chartPie=null, chartCompLine=null, chartCompBar=null;
 // ── visão combinada ──
@@ -435,6 +447,7 @@ function startDataListener(uid){
       openGroups=Object.fromEntries(groups.map(g=>[g.key,(d.openGroups&&g.key in d.openGroups)?d.openGroups[g.key]:true]));
       sharedWith=d.sharedWith||[];
       watching=d.watching||[];
+      wrapNames=d.wrapNames||false;
     } else {
       years={[REAL_YEAR]:blankYear()}; year=REAL_YEAR; monthSel=REAL_MONTH;
       colors={...PRESETS[0].colors}; groups=DEFAULT_CATS.map(g=>({...g})); chartColors=DEFAULT_CHART_COLORS.slice(); chartStyle="bar";
@@ -456,7 +469,7 @@ function scheduleSave(){
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     const stateRef=doc(db,"users",user.uid,"data","state");
-    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching}).catch(()=>{});
+    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames}).catch(()=>{});
   },500);
 }
 
@@ -640,9 +653,13 @@ function renderAppearancePanel(){
       <button id="catAdd-btn">＋ Adicionar</button>
     </div>
     <p class="lbl">Estilo do gráfico principal</p>
-    <div style="display:flex;gap:6px">
+    <div style="display:flex;gap:6px;margin-bottom:16px">
       ${[["bar","Barras"],["line","Linhas"],["area","Área"]].map(([id,l])=>`<button class="style-btn ${chartStyle===id?"active":""}" data-style="${id}">${l}</button>`).join("")}
-    </div>`;
+    </div>
+    <p class="lbl">Tabelas</p>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer">
+      <input type="checkbox" id="wrapNamesToggle" ${wrapNames?"checked":""}> Mostrar nomes completos (alarga a coluna)
+    </label>`;
   p.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const pr=PRESETS.find(x=>x.id===b.dataset.preset); colors={...pr.colors}; applyThemeVars(); scheduleSave(); renderShell(); renderAll();});
   p.querySelectorAll("[data-colorkey]").forEach(inp=>inp.oninput=()=>setColor(inp.dataset.colorkey,inp.value));
   p.querySelectorAll("[data-chartcoloridx]").forEach(inp=>inp.oninput=()=>setChartColor(Number(inp.dataset.chartcoloridx),inp.value));
@@ -650,6 +667,7 @@ function renderAppearancePanel(){
   p.querySelectorAll("[data-catdel]").forEach(b=>b.onclick=()=>{ if(confirm("Excluir esta categoria?")) deleteCategory(b.dataset.catdel); });
   wireAddRow("catAdd", name=>addCategory(name));
   p.querySelectorAll("[data-style]").forEach(b=>b.onclick=()=>{chartStyle=b.dataset.style;scheduleSave();renderAll();renderAppearancePanel();});
+  document.getElementById("wrapNamesToggle").onchange=e=>{ wrapNames=e.target.checked; scheduleSave(); renderAll(); renderAppearancePanel(); };
 }
 document.getElementById("btnAparencia").onclick=(e)=>{
   e.stopPropagation();
@@ -679,7 +697,7 @@ function monthlyTableHTML(items,section,accent,lockedRow,extraCol){
     const rowTotal=sumArr(it.values);
     rowsHtml+=`<tr>
       <td><button class="icon-btn rec ${it.recurring?"on":""}" data-rec="${it.id}" title="Repetir valor">↻</button></td>
-      <td><input class="cell-input" value="${esc(it.name)}" data-rename="${it.id}"></td>
+      <td><input class="cell-input${wrapNames?" wide":""}" value="${esc(it.name)}" data-rename="${it.id}" title="${esc(it.name)}"></td>
       ${extraCol?`<td>${extraCol.render(it)}</td>`:""}
       ${idxs.map(i=>`<td class="num"><input class="cell-input num" type="number" placeholder="0" value="${it.values[i]===0?"":it.values[i]}" data-val="${it.id}" data-month="${i}"></td>`).join("")}
       ${showTotal?`<td class="num" style="font-weight:600">${fmt(rowTotal)}</td>`:""}
@@ -769,7 +787,8 @@ function renderDashboard(c){
   const inc=data().income.filter(it=>it.values[em]).map(it=>({name:it.name,value:it.values[em],positive:true,subtitle:"Receita",color:t.positive}));
   const deb=debtorsByMonth[em]?[{name:"Devedores (recebido)",value:debtorsByMonth[em],positive:true,subtitle:"Receita automática",color:t.accent2}]:[];
   const exp=data().expenses.filter(it=>it.values[em]).map(it=>({name:it.name,value:it.values[em],positive:false,subtitle:groupLabel(it.group),color:groupColor(chartColors,it.group)}));
-  const recentItems=[...inc,...deb,...exp].sort((a,b)=>Math.abs(b.value)-Math.abs(a.value)).slice(0,8);
+  const recentItemsAll=[...inc,...deb,...exp].sort((a,b)=>Math.abs(b.value)-Math.abs(a.value));
+  const recentItems=dashShowAllLanc?recentItemsAll:recentItemsAll.slice(0,8);
 
   const byGroup={};
   data().expenses.forEach(it=>{ const g=it.group||"outros"; byGroup[g]=(byGroup[g]||0)+sumArr(it.values); });
@@ -814,7 +833,10 @@ function renderDashboard(c){
       </div>
     </div>
     <div class="card" style="margin-bottom:18px">
-      <p class="card-title">Lançamentos de ${MONTHS[em]}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <p class="card-title" style="margin:0">Lançamentos de ${MONTHS[em]}</p>
+        ${recentItemsAll.length>8?`<button data-toggle-lanc style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;white-space:nowrap">${dashShowAllLanc?"Ver menos":`Ver todos (${recentItemsAll.length})`}</button>`:""}
+      </div>
       ${recentItems.length?recentItems.map((it,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 2px;${i<recentItems.length-1?"border-bottom:1px solid var(--line)":""}">
         <div style="display:flex;align-items:center;gap:10px"><span style="width:34px;height:34px;border-radius:50%;background:${withAlpha(it.color,"22")};color:${it.color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">${esc(it.name.slice(0,1).toUpperCase())}</span>
         <div><p style="margin:0;font-size:13px">${esc(it.name)}</p><p style="margin:0;font-size:11px;color:var(--muted)">${esc(it.subtitle)}</p></div></div>
@@ -859,6 +881,8 @@ function renderDashboard(c){
     </div>`;
 
   c.querySelectorAll("[data-goto]").forEach(b=>b.onclick=()=>{tab=b.dataset.goto;renderShell();renderAll();});
+  const btnToggleLanc=c.querySelector("[data-toggle-lanc]");
+  if(btnToggleLanc) btnToggleLanc.onclick=()=>{ dashShowAllLanc=!dashShowAllLanc; renderAll(); };
   c.querySelectorAll("[data-chartcoloridx2]").forEach(inp=>inp.oninput=()=>setChartColor(Number(inp.dataset.chartcoloridx2),inp.value));
   document.getElementById("btnExportCsv").onclick=()=>downloadCSV(`log-pose-${year}.csv`,toCSV(data()));
   document.getElementById("btnImportCsvTrigger").onclick=()=>document.getElementById("importCsvFile").click();
@@ -1133,3 +1157,4 @@ if("serviceWorker" in navigator){
 </script>
 </body>
 </html>
+
