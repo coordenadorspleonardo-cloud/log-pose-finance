@@ -56,6 +56,7 @@ header .wm{position:absolute;top:-40px;right:-30px;opacity:.09;pointer-events:no
 .hd-left p{font-size:11.5px;color:#ffffffaa;margin:0;}
 .hd-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .hd-right select,.hd-right button{background:transparent;color:var(--onInk);border:1px solid #ffffff33;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer;}
+.hd-right select option{background:#FFFFFF;color:#1B2430;}
 nav.tabs{display:flex;gap:6px;padding:12px 24px;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--card);}
 .tab{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap;}
 .tab.active{background:var(--ink);color:var(--onInk);border-color:var(--ink);}
@@ -224,7 +225,7 @@ const PRESETS = [
 ];
 
 // ───────── HELPERS PUROS ─────────
-const fmt = n => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}).format(Math.round(Number(n)||0));
+const fmt = n => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(n)||0);
 const fmtFull = n => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(Number(n)||0);
 const sumArr = a => a.reduce((s,v)=>s+(Number(v)||0),0);
 const sumByMonth = items => Array.from({length:12},(_,i)=>items.reduce((s,it)=>s+(Number(it.values[i])||0),0));
