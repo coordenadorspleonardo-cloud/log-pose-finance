@@ -192,7 +192,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDnAT3jlg28S4H9yVQZc6G16ht-6ZhapT4",
+  apiKey: "AIzaSyDn•••••••••••••••••••••••••••••••",
   authDomain: "log-posefinance.firebaseapp.com",
   projectId: "log-posefinance",
   storageBucket: "log-posefinance.firebasestorage.app",
@@ -245,7 +245,7 @@ const luminance = hex => {
 let uidCounter=1;
 const nid = p => `${p||"it"}-${uidCounter++}-${Math.random().toString(36).slice(2,7)}`;
 const mk = (name,group,values) => ({id:nid(group||"it"),name,group:group||null,recurring:false,values:(values&&values.length===12)?values.slice():Array(12).fill(0)});
-const groupColor = (colors,key) => { const i=GROUPS.findIndex(g=>g.key===key); return (colors||DEFAULT_CHART_COLORS)[i>=0?i:colors.length-1]; };
+const groupColor = (colorsArr,key) => { const i=GROUPS.findIndex(g=>g.key===key); return (colorsArr||DEFAULT_CHART_COLORS)[i>=0?i:colorsArr.length-1]; };
 const groupLabel = key => (GROUPS.find(g=>g.key===key)||{}).label || "Outros";
 const blankYear = () => ({income:[],patrimonio:[],expenses:[],debtors:[]});
 const parseDueDay = name => {
@@ -265,7 +265,7 @@ function toCSV(yearData){
   return rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
 }
 function downloadCSV(filename,csvText){
-  const blob=new Blob(["\ufeff"+csvText],{type:"text/csv;charset=utf-8;"});
+  const blob=new Blob(["﻿"+csvText],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a"); a.href=url; a.download=filename;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -323,16 +323,6 @@ function applyThemeVars(){
 
 // ───────── AUTH ─────────
 function setErr(id,msg){document.getElementById(id).textContent=msg;}
-function friendlyErr(code){
-  const map={
-    "auth/invalid-email":"E-mail inválido.","auth/user-not-found":"Não existe conta com esse e-mail.",
-    "auth/wrong-password":"Senha incorreta.","auth/invalid-credential":"E-mail ou senha incorretos.",
-    "auth/email-already-in-use":"Já existe uma conta com esse e-mail.",
-    "auth/weak-password":"A senha precisa ter pelo menos 6 caracteres.",
-    "auth/popup-closed-by-user":"Login com Google cancelado."
-  };
-  return map[code]||"Não foi possível concluir. Tente novamente.";
-}
 document.getElementById("tabEntrar").onclick=()=>{document.getElementById("tabEntrar").classList.add("active");document.getElementById("tabCriar").classList.remove("active");document.getElementById("fLogin").style.display="block";document.getElementById("fCriar").style.display="none";document.getElementById("fRecover").style.display="none";};
 document.getElementById("tabCriar").onclick=()=>{document.getElementById("tabCriar").classList.add("active");document.getElementById("tabEntrar").classList.remove("active");document.getElementById("fCriar").style.display="block";document.getElementById("fLogin").style.display="none";document.getElementById("fRecover").style.display="none";};
 document.getElementById("linkEsqueci").onclick=()=>{document.getElementById("fLogin").style.display="none";document.getElementById("fRecover").style.display="block";};
@@ -541,7 +531,6 @@ document.getElementById("appearancePanel").addEventListener("click",e=>e.stopPro
 // ───────── RENDER: TABELA MENSAL (genérica) ─────────
 function monthlyTableHTML(items,section,accent,lockedRow){
   const totals=sumByMonth(lockedRow?[...items,lockedRow]:items);
-  const grand=sumArr(sumByMonth(items));
   const idxs=isAllMonths()?MONTHS.map((_,i)=>i):[effectiveMonth()];
   const showTotal=idxs.length>1;
   let rowsHtml="";
@@ -711,7 +700,7 @@ function renderDashboard(c){
     dsSets.push({type:"line",label:"Despesas",data:dsExp,borderColor:t.negative,tension:.3});
   }
   dsSets.push({type:"line",label:"Saldo",data:dsSaldo,borderColor:t.accent2,borderDash:chartStyle==="line"?[5,3]:[],tension:.3});
-  chartDash=new Chart(document.getElementById("dashChart"),{data:{labels,datasets:dsSets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:t.text}}}},scales:{x:{ticks:{color:t.muted}},y:{ticks:{color:t.muted}}}});
+  chartDash=new Chart(document.getElementById("dashChart"),{data:{labels,datasets:dsSets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:t.text}}},scales:{x:{ticks:{color:t.muted}},y:{ticks:{color:t.muted}}}}});
 
   if(chartPie) chartPie.destroy();
   chartPie=new Chart(document.getElementById("pieChart"),{type:"doughnut",data:{labels:groupBreakdown.map(g=>g.label),datasets:[{data:groupBreakdown.map(g=>g.value),backgroundColor:groupBreakdown.map(g=>g.color)}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
@@ -880,4 +869,30 @@ function renderComparar(c){
   if(chartCompLine) chartCompLine.destroy();
   chartCompLine=new Chart(document.getElementById("compLineChart"),{type:"line",data:{labels:MONTHS,datasets:yearKeys.map((y,i)=>({label:y,data:perYear[y],borderColor:chartColors[i%8],tension:.3}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:t.text}}},scales:{x:{ticks:{color:t.muted}},y:{ticks:{color:t.muted}}}}});
 
-  if(chartCompBar) chartCompBar.destro
+  if(chartCompBar) chartCompBar.destroy();
+  chartCompBar=new Chart(document.getElementById("compBarChart"),{type:"bar",data:{labels:yearKeys,datasets:[
+    {label:"Faturamento",data:totalsRows.map(r=>r.inc),backgroundColor:colors.positive},
+    {label:"Despesas",data:totalsRows.map(r=>r.exp),backgroundColor:colors.negative},
+    {label:"Saldo",data:totalsRows.map(r=>r.saldo),backgroundColor:colors.accent2},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:t.muted}},y:{ticks:{color:t.muted}}}}});
+}
+
+// ───────── RENDER: DISPATCH ─────────
+function renderAll(){
+  if(!loaded) return;
+  const content=document.getElementById("content");
+  if(tab==="dashboard") renderDashboard(content);
+  else if(tab==="faturamento") renderFaturamento(content);
+  else if(tab==="despesas") renderDespesas(content);
+  else if(tab==="patrimonio") renderPatrimonio(content);
+  else if(tab==="devedores") renderDevedores(content);
+  else if(tab==="comparar") renderComparar(content);
+}
+</script>
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js").catch(()=>{}); });
+}
+</script>
+</body>
+</html>
