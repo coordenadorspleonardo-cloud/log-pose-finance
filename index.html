@@ -460,15 +460,17 @@ function computeAll(){
   const debtorsByMonth=sumByMonth(d.debtors);
   const incomeByMonth=sumByMonth(d.income).map((v,i)=>v+debtorsByMonth[i]);
   const expenseByMonth=sumByMonth(d.expenses);
-  const saldoByMonth=incomeByMonth.map((v,i)=>v-expenseByMonth[i]);
+  const patrimonioByMonth=sumByMonth(d.patrimonio);
+  const saldoByMonth=incomeByMonth.map((v,i)=>v-expenseByMonth[i]-patrimonioByMonth[i]);
   const em=effectiveMonth();
+  const patrimonioAllYears=Object.keys(years).reduce((s,y)=>s+sumArr(years[y].patrimonio.map(it=>sumArr(it.values))),0);
   return {
-    d, debtorsByMonth, incomeByMonth, expenseByMonth, saldoByMonth,
+    d, debtorsByMonth, incomeByMonth, expenseByMonth, patrimonioByMonth, saldoByMonth,
     incomeAnnual:sumArr(incomeByMonth), expenseAnnual:sumArr(expenseByMonth),
-    patrimonioAnnual:sumArr(d.patrimonio.map(it=>sumArr(it.values))),
+    patrimonioAnnual:patrimonioAllYears,
     debtAnnual:sumArr(d.debtors.map(it=>sumArr(it.values))),
-    monthIncome:incomeByMonth[em]||0, monthExpense:expenseByMonth[em]||0,
-    monthSaldo:(incomeByMonth[em]||0)-(expenseByMonth[em]||0),
+    monthIncome:incomeByMonth[em]||0, monthExpense:expenseByMonth[em]||0, monthPatrimonio:patrimonioByMonth[em]||0,
+    monthSaldo:(incomeByMonth[em]||0)-(expenseByMonth[em]||0)-(patrimonioByMonth[em]||0),
     prevMonthSaldo: em>0?saldoByMonth[em-1]:null, em
   };
 }
@@ -570,7 +572,7 @@ function wireAddRow(id,onAdd){
 
 // ───────── RENDER: DASHBOARD ─────────
 function renderDashboard(c){
-  const {debtorsByMonth,incomeByMonth,expenseByMonth,saldoByMonth,incomeAnnual,expenseAnnual,patrimonioAnnual,debtAnnual,monthIncome,monthExpense,monthSaldo,prevMonthSaldo,em}=computeAll();
+  const {debtorsByMonth,incomeByMonth,expenseByMonth,saldoByMonth,incomeAnnual,expenseAnnual,patrimonioAnnual,debtAnnual,monthIncome,monthExpense,monthPatrimonio,monthSaldo,prevMonthSaldo,em}=computeAll();
   const t=theme();
   const monthDelta=(prevMonthSaldo!==null&&prevMonthSaldo!==0)?((monthSaldo-prevMonthSaldo)/Math.abs(prevMonthSaldo))*100:null;
   const initials=(user.displayName||user.email).trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
@@ -616,6 +618,8 @@ function renderDashboard(c){
         <div class="result-part"><span style="color:var(--positive)">${fmt(monthIncome)}</span><span>Faturamento mensal (com devedores)</span></div>
         <span style="color:var(--muted);font-size:18px">−</span>
         <div class="result-part"><span style="color:var(--negative)">${fmt(monthExpense)}</span><span>Despesas mensais (todas as categorias)</span></div>
+        <span style="color:var(--muted);font-size:18px">−</span>
+        <div class="result-part"><span style="color:var(--accent2)">${fmt(monthPatrimonio)}</span><span>Guardado no mês (Patrimônio)</span></div>
         <span style="color:var(--muted);font-size:18px">=</span>
         <div class="result-part"><span style="color:${monthSaldo>=0?"var(--positive)":"var(--negative)"};font-size:20px">${fmt(monthSaldo)}</span><span>Resultado final do mês</span></div>
       </div>
@@ -824,13 +828,13 @@ let compPeriodStart=0;
 function renderComparar(c){
   const t=theme();
   const yearKeys=Object.keys(years).sort();
-  const yearSaldoByMonth=yd=>{ const debt=sumByMonth(yd.debtors); const inc=sumByMonth(yd.income).map((v,i)=>v+debt[i]); const exp=sumByMonth(yd.expenses); return inc.map((v,i)=>v-exp[i]); };
+  const yearSaldoByMonth=yd=>{ const debt=sumByMonth(yd.debtors); const inc=sumByMonth(yd.income).map((v,i)=>v+debt[i]); const exp=sumByMonth(yd.expenses); const pat=sumByMonth(yd.patrimonio); return inc.map((v,i)=>v-exp[i]-pat[i]); };
   const perYear={}; yearKeys.forEach(y=>perYear[y]=yearSaldoByMonth(years[y]));
   const totalsRows=yearKeys.map(y=>{
     const yd=years[y]; const debt=sumByMonth(yd.debtors);
-    const incFull=sumByMonth(yd.income).map((v,i)=>v+debt[i]); const expFull=sumByMonth(yd.expenses);
-    const inc=sumArr(incFull.slice(compPeriodStart)), exp=sumArr(expFull.slice(compPeriodStart));
-    return {year:y,inc,exp,saldo:inc-exp};
+    const incFull=sumByMonth(yd.income).map((v,i)=>v+debt[i]); const expFull=sumByMonth(yd.expenses); const patFull=sumByMonth(yd.patrimonio);
+    const inc=sumArr(incFull.slice(compPeriodStart)), exp=sumArr(expFull.slice(compPeriodStart)), pat=sumArr(patFull.slice(compPeriodStart));
+    return {year:y,inc,exp,saldo:inc-exp-pat};
   });
   c.innerHTML=`<div class="card" style="margin-bottom:18px">
     <p class="card-title" style="margin-bottom:4px">Raio-x mês a mês</p>
