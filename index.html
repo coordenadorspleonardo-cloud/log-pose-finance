@@ -6,7 +6,7 @@
 <title>Log Pose</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#141B23">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Log Pose">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
@@ -42,7 +42,7 @@ a{color:inherit;}
 .btn-google{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px;cursor:pointer;margin-bottom:16px;}
 .divider{display:flex;align-items:center;gap:8px;margin:4px 0 16px;color:var(--muted);font-size:11px;}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line);}
-.err-msg{font-size:12px;color:var(--negative);margin:0 0 10px;}
+.err-msg{font-size:12px;color:var(--negative);margin:0 0 10px;word-break:break-word;}
 .ok-msg{font-size:12px;color:var(--positive);margin:0 0 10px;}
 .link-btn{background:none;border:none;color:var(--muted);font-size:11.5px;cursor:pointer;text-decoration:underline;display:block;margin:12px auto 0;}
 
@@ -97,7 +97,7 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .result-part span:first-child{font-weight:700;font-size:17px;display:block;}
 .result-part span:last-child{color:var(--muted);font-size:11px;font-family:var(--sans);}
 
-/* AParência panel */
+/* Aparência panel */
 .appearance-btn{position:relative;}
 .appearance-panel{position:absolute;right:0;top:40px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:290px;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.25);max-height:480px;overflow-y:auto;display:none;color:var(--text);}
 .appearance-panel.open{display:block;}
@@ -333,7 +333,7 @@ document.getElementById("btnEntrar").onclick=async()=>{
   const email=document.getElementById("le").value.trim(), pass=document.getElementById("lp").value;
   if(!email||!pass){setErr("errLogin","Preencha e-mail e senha.");return;}
   try{ await signInWithEmailAndPassword(auth,email,pass); }
-  catch(e){ setErr("errLogin",friendlyErr(e.code)); }
+  catch(e){ console.error("LOGIN ERROR", e); setErr("errLogin", (e.code||"?") + " — " + (e.message||"")); }
 };
 document.getElementById("btnCriar").onclick=async()=>{
   setErr("errCriar","");
@@ -342,11 +342,11 @@ document.getElementById("btnCriar").onclick=async()=>{
   try{
     const cred=await createUserWithEmailAndPassword(auth,email,pass);
     if(name) await updateProfile(cred.user,{displayName:name});
-  }catch(e){ setErr("errCriar",friendlyErr(e.code)); }
+  }catch(e){ console.error("SIGNUP ERROR", e); setErr("errCriar", (e.code||"?") + " — " + (e.message||"")); }
 };
 document.getElementById("btnGoogle").onclick=async()=>{
   try{ await signInWithPopup(auth,googleProvider); }
-  catch(e){ if(e.code!=="auth/popup-closed-by-user") setErr("errLogin",friendlyErr(e.code)); }
+  catch(e){ if(e.code!=="auth/popup-closed-by-user"){ console.error("GOOGLE ERROR", e); setErr("errLogin", (e.code||"?") + " — " + (e.message||"")); } }
 };
 document.getElementById("btnRecover").onclick=async()=>{
   setErr("errRecover","");
@@ -356,7 +356,7 @@ document.getElementById("btnRecover").onclick=async()=>{
     await sendPasswordResetEmail(auth,email);
     document.getElementById("errRecover").className="ok-msg";
     setErr("errRecover","✅ E-mail enviado! Verifique também o Spam.");
-  }catch(e){ document.getElementById("errRecover").className="err-msg"; setErr("errRecover",friendlyErr(e.code)); }
+  }catch(e){ document.getElementById("errRecover").className="err-msg"; setErr("errRecover", (e.code||"?") + " — " + (e.message||"")); }
 };
 document.getElementById("btnSair").onclick=()=>{ if(confirm("Sair do Log Pose?")) signOut(auth); };
 
