@@ -652,9 +652,11 @@ function renderAppearancePanel(){
       <button id="catAdd-btn">＋ Adicionar</button>
     </div>
     <p class="lbl">Estilo do gráfico principal</p>
-    <div style="display:flex;gap:6px;margin-bottom:16px">
-      ${[["bar","Barras"],["line","Linhas"],["area","Área"]].map(([id,l])=>`<button class="style-btn ${chartStyle===id?"active":""}" data-style="${id}">${l}</button>`).join("")}
-    </div>
+    <select id="chartStyleSel" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;background:var(--paper);color:var(--text);margin-bottom:16px">
+      <option value="bar" ${chartStyle==="bar"?"selected":""}>Barras</option>
+      <option value="line" ${chartStyle==="line"?"selected":""}>Linhas</option>
+      <option value="area" ${chartStyle==="area"?"selected":""}>Área</option>
+    </select>
     <p class="lbl">Tabelas</p>
     <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer">
       <input type="checkbox" id="wrapNamesToggle" ${wrapNames?"checked":""}> Mostrar nomes completos (alarga a coluna)
@@ -666,7 +668,7 @@ function renderAppearancePanel(){
   p.querySelectorAll("[data-catrename]").forEach(inp=>inp.onchange=()=>renameCategory(inp.dataset.catrename,inp.value.trim()||inp.dataset.catrename));
   p.querySelectorAll("[data-catdel]").forEach(b=>b.onclick=()=>{ if(confirm("Excluir esta categoria?")) deleteCategory(b.dataset.catdel); });
   wireAddRow("catAdd", name=>addCategory(name));
-  p.querySelectorAll("[data-style]").forEach(b=>b.onclick=()=>{chartStyle=b.dataset.style;scheduleSave();renderAll();renderAppearancePanel();});
+  document.getElementById("chartStyleSel").onchange=e=>{chartStyle=e.target.value;scheduleSave();renderAll();};
   document.getElementById("wrapNamesToggle").onchange=e=>{ wrapNames=e.target.checked; scheduleSave(); renderAll(); renderAppearancePanel(); };
 }
 document.getElementById("btnAparencia").onclick=(e)=>{
