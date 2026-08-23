@@ -106,7 +106,7 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .appearance-panel p.lbl{font-size:12px;color:var(--muted);margin:0 0 10px;}
 .preset-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);position:relative;cursor:pointer;margin:0 8px 8px 0;}
 .color-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:12.5px;}
-.style-btn{flex:1;padding:7px 4px;font-size:12px;border-radius:8px;border:1px solid var(--line);background:transparent;cursor:pointer;}
+.style-btn{flex:1;padding:7px 4px;font-size:12px;border-radius:8px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);}
 .style-btn.active{border-color:var(--positive);background:#1F7A5C18;color:var(--positive);}
 
 .empty-msg{padding:14px 8px;font-size:13px;color:var(--muted);}
@@ -353,9 +353,11 @@ function deleteCategory(key){
 }
 
 function theme(){
+  const autoOnInk=luminance(colors.ink)>.6?"#141414":"#FFFFFF";
+  const autoOnAccent=luminance(colors.positive)>.6?"#141414":"#FFFFFF";
   return {...colors, line:withAlpha(colors.muted,"33"),
-    onInk:luminance(colors.ink)>.6?"#141414":"#FFFFFF",
-    onAccent:luminance(colors.positive)>.6?"#141414":"#FFFFFF"};
+    onInk: colors.onInk||autoOnInk,
+    onAccent: colors.onAccent||autoOnAccent};
 }
 function applyThemeVars(){
   const t=theme();
@@ -628,11 +630,17 @@ function renderAppearancePanel(){
   const p=document.getElementById("appearancePanel");
   const fields=[["paper","Fundo geral"],["card","Fundo dos cartões"],["ink","Barra superior"],["text","Texto principal"],
     ["muted","Texto secundário"],["positive","Receitas / destaque"],["negative","Despesas / alertas"],["accent2","Destaque secundário"]];
+  const autoOnInk=luminance(colors.ink)>.6?"#141414":"#FFFFFF";
+  const autoOnAccent=luminance(colors.positive)>.6?"#141414":"#FFFFFF";
+  const onInkVal=colors.onInk||autoOnInk, onAccentVal=colors.onAccent||autoOnAccent;
   p.innerHTML=`
     <p class="lbl">Modelos rápidos</p>
     <div style="margin-bottom:16px">${PRESETS.map(pr=>`<button class="preset-btn" data-preset="${pr.id}" style="background:${pr.colors.paper}"><span style="position:absolute;bottom:3px;right:3px;width:14px;height:14px;border-radius:50%;background:${pr.colors.positive};border:1px solid ${pr.colors.card}"></span></button>`).join("")}</div>
     <p class="lbl">Cores personalizadas</p>
-    <div style="margin-bottom:16px">${fields.map(([k,l])=>`<div class="color-row"><span>${l}</span><label class="swatch" style="width:26px;height:26px;background:${colors[k]}"><input type="color" value="${colors[k]}" data-colorkey="${k}"></label></div>`).join("")}</div>
+    <div style="margin-bottom:16px">${fields.map(([k,l])=>`<div class="color-row"><span>${l}</span><label class="swatch" style="width:26px;height:26px;background:${colors[k]}"><input type="color" value="${colors[k]}" data-colorkey="${k}"></label></div>`).join("")}
+      <div class="color-row"><span>Texto sobre fundo escuro (abas, cabeçalho, botões)</span><div style="display:flex;align-items:center;gap:6px">${colors.onInk?`<button data-resetcolor="onInk" title="Voltar ao automático" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0">↺</button>`:""}<label class="swatch" style="width:26px;height:26px;background:${onInkVal}"><input type="color" value="${onInkVal}" data-colorkey="onInk"></label></div></div>
+      <div class="color-row"><span>Texto sobre botão de destaque (avatar)</span><div style="display:flex;align-items:center;gap:6px">${colors.onAccent?`<button data-resetcolor="onAccent" title="Voltar ao automático" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0">↺</button>`:""}<label class="swatch" style="width:26px;height:26px;background:${onAccentVal}"><input type="color" value="${onAccentVal}" data-colorkey="onAccent"></label></div></div>
+    </div>
     <p class="lbl">Categorias de despesa</p>
     <div style="margin-bottom:12px">${groups.map((g,i)=>`<div class="color-row">
       <label class="swatch" style="width:22px;height:22px;background:${chartColors[i]}"><input type="color" value="${chartColors[i]}" data-chartcoloridx="${i}"></label>
@@ -653,6 +661,7 @@ function renderAppearancePanel(){
     </label>`;
   p.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const pr=PRESETS.find(x=>x.id===b.dataset.preset); colors={...pr.colors}; applyThemeVars(); scheduleSave(); renderShell(); renderAll();});
   p.querySelectorAll("[data-colorkey]").forEach(inp=>inp.oninput=()=>setColor(inp.dataset.colorkey,inp.value));
+  p.querySelectorAll("[data-resetcolor]").forEach(b=>b.onclick=()=>{ colors={...colors}; delete colors[b.dataset.resetcolor]; applyThemeVars(); scheduleSave(); renderShell(); renderAll(); renderAppearancePanel(); });
   p.querySelectorAll("[data-chartcoloridx]").forEach(inp=>inp.oninput=()=>setChartColor(Number(inp.dataset.chartcoloridx),inp.value));
   p.querySelectorAll("[data-catrename]").forEach(inp=>inp.onchange=()=>renameCategory(inp.dataset.catrename,inp.value.trim()||inp.dataset.catrename));
   p.querySelectorAll("[data-catdel]").forEach(b=>b.onclick=()=>{ if(confirm("Excluir esta categoria?")) deleteCategory(b.dataset.catdel); });
