@@ -190,6 +190,8 @@ import {
   getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+// a chave é montada em duas partes de propósito: colar o texto inteiro em uma
+// única string costuma ser "mascarado" (trocado por bolinhas) ao copiar deste chat
 const _apiKeyPart1 = "AIzaSyDnAT3jlg28S4H9yVQZc6G16ht";
 const _apiKeyPart2 = "-6ZhapT4";
 const firebaseConfig = {
@@ -210,11 +212,12 @@ const googleProvider = new GoogleAuthProvider();
 const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const NOW = new Date();
 const REAL_YEAR = NOW.getFullYear(), REAL_MONTH = NOW.getMonth(), REAL_DAY = NOW.getDate();
-const GROUPS = [
+const DEFAULT_CATS = [
   {key:"cartoes",label:"Cartões de crédito"},{key:"carro",label:"Carro"},{key:"casa",label:"Casa e contas"},
   {key:"saude",label:"Saúde e bem-estar"},{key:"estudos",label:"Estudos"},{key:"lazer",label:"Lazer"},
   {key:"presentes",label:"Presentes e família"},{key:"outros",label:"Outros"},
 ];
+let groups = DEFAULT_CATS.map(g=>({...g})); // categorias de despesa — editável por conta, salvo no Firestore
 const DEFAULT_CHART_COLORS = ["#B8963E","#6B7C93","#1F7A5C","#C1443D","#3D5A80","#9C6ADE","#B65C3D","#8A8478"];
 const PRESETS = [
   {id:"classico",name:"Clássico",colors:{ink:"#141B23",paper:"#EEF1EC",card:"#FFFFFF",text:"#1B2430",muted:"#5B6572",positive:"#1F7A5C",negative:"#C1443D",accent2:"#B8963E"}},
@@ -239,8 +242,8 @@ const luminance = hex => {
 let uidCounter=1;
 const nid = p => `${p||"it"}-${uidCounter++}-${Math.random().toString(36).slice(2,7)}`;
 const mk = (name,group,values) => ({id:nid(group||"it"),name,group:group||null,recurring:false,values:(values&&values.length===12)?values.slice():Array(12).fill(0)});
-const groupColor = (colorsArr,key) => { const i=GROUPS.findIndex(g=>g.key===key); return (colorsArr||DEFAULT_CHART_COLORS)[i>=0?i:colorsArr.length-1]; };
-const groupLabel = key => (GROUPS.find(g=>g.key===key)||{}).label || "Outros";
+const groupColor = (colorsArr,key) => { const i=groups.findIndex(g=>g.key===key); return (colorsArr||DEFAULT_CHART_COLORS)[i>=0?i:colorsArr.length-1]; };
+const groupLabel = key => (groups.find(g=>g.key===key)||{}).label || "Outros";
 const blankYear = () => ({income:[],patrimonio:[],expenses:[],debtors:[]});
 const parseDueDay = name => {
   const m = name.match(/venc\.?\s*(\d{1,2})/i) || name.match(/dia\s*(\d{1,2})/i);
@@ -278,19 +281,30 @@ function parseCSVRows(text){
 }
 function fromCSV(text){
   const rows=parseCSVRows(text).slice(1);
-  const keyByLabel=Object.fromEntries(GROUPS.map(g=>[g.label,g.key]));
+  const keyByLabel=Object.fromEntries(groups.map(g=>[g.label,g.key]));
   const result={income:[],expenses:[],patrimonio:[],debtors:[]};
   rows.forEach(cells=>{
     if(cells.length<15)return;
     const [secao,grupoLabel,name,...vals]=cells;
     const values=vals.slice(0,12).map(v=>Number(v)||0);
-    const group=grupoLabel?(keyByLabel[grupoLabel]||null):null;
+    let group=null;
+    if(secao==="Despesas"&&grupoLabel){
+      if(!keyByLabel[grupoLabel]){
+        // categoria nova encontrada no CSV: cria automaticamente nesta conta
+        const newKey=nid("cat");
+        groups=[...groups,{key:newKey,label:grupoLabel}];
+        keyByLabel[grupoLabel]=newKey;
+        openGroups[newKey]=true;
+      }
+      group=keyByLabel[grupoLabel];
+    }
     const item=mk(name,group,values);
     if(secao==="Faturamento")result.income.push(item);
     else if(secao==="Despesas")result.expenses.push(item);
     else if(secao==="Patrimonio")result.patrimonio.push(item);
     else if(secao==="Devedores")result.debtors.push(item);
   });
+  syncChartColors();
   return result;
 }
 
@@ -300,9 +314,40 @@ let years={}, year=null, monthSel=REAL_MONTH;
 let colors={...PRESETS[0].colors}, chartColors=DEFAULT_CHART_COLORS.slice(), chartStyle="bar";
 let budgets={}, goals=[];
 let tab="dashboard";
-let openGroups=Object.fromEntries(GROUPS.map(g=>[g.key,true]));
+let openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
 let saveTimer=null, applyingRemote=false, unsubState=null;
 let chartDash=null, chartPie=null, chartCompLine=null, chartCompBar=null;
+// ── visão combinada ──
+let sharedWith=[]; // [{uid,email}] — quem eu deixo ler meus dados
+let watching=[];   // [{uid,email}] — de quem eu quero ver os dados (só leitura)
+let watchedData={}, watchedUnsubs={};
+const emailDocId = email => String(email||"").trim().toLowerCase();
+
+function syncChartColors(){
+  // mantém chartColors alinhado 1:1 com groups (mesmo tamanho, cor nova ciclando DEFAULT_CHART_COLORS)
+  chartColors = groups.map((g,i)=> chartColors[i] || DEFAULT_CHART_COLORS[i%DEFAULT_CHART_COLORS.length]);
+  groups.forEach(g=>{ if(!(g.key in openGroups)) openGroups[g.key]=true; });
+}
+function addCategory(label){
+  const key=nid("cat");
+  groups=[...groups,{key,label}];
+  syncChartColors();
+  scheduleSave(); renderAll(); renderAppearancePanel();
+}
+function renameCategory(key,label){
+  groups=groups.map(g=>g.key===key?{...g,label}:g);
+  scheduleSave(); renderAll(); renderAppearancePanel();
+}
+function deleteCategory(key){
+  const hasItems=data().expenses.some(it=>it.group===key);
+  if(hasItems){ alert("Essa categoria tem itens de despesa lançados. Apague ou mude o grupo desses itens antes de excluir a categoria."); return; }
+  const idx=groups.findIndex(g=>g.key===key);
+  groups=groups.filter(g=>g.key!==key);
+  if(idx>=0) chartColors=chartColors.filter((c,i)=>i!==idx);
+  delete budgets[key];
+  delete openGroups[key];
+  scheduleSave(); renderAll(); renderAppearancePanel();
+}
 
 function theme(){
   return {...colors, line:withAlpha(colors.muted,"33"),
@@ -361,8 +406,10 @@ onAuthStateChanged(auth, async u=>{
     document.getElementById("appScreen").style.display="flex";
     document.getElementById("helloTxt").textContent="Olá, "+(u.displayName||u.email.split("@")[0]);
     startDataListener(u.uid);
+    setDoc(doc(db,"emailIndex",emailDocId(u.email)),{uid:u.uid,email:emailDocId(u.email)},{merge:true}).catch(()=>{});
   } else {
     if(unsubState){unsubState();unsubState=null;}
+    Object.values(watchedUnsubs).forEach(fn=>fn()); watchedUnsubs={}; watchedData={}; watching=[]; sharedWith=[];
     loaded=false;
     document.getElementById("appScreen").style.display="none";
     document.getElementById("loginScreen").style.display="flex";
@@ -380,19 +427,25 @@ function startDataListener(uid){
       year=(d.currentYear&&years[d.currentYear])?d.currentYear:Number(Object.keys(years)[0]);
       monthSel=(d.focusMonth==="all"||typeof d.focusMonth==="number")?d.focusMonth:REAL_MONTH;
       colors=d.colors||{...PRESETS[0].colors};
-      chartColors=(d.chartColors&&d.chartColors.length===8)?d.chartColors:DEFAULT_CHART_COLORS.slice();
+      groups=(d.groups&&d.groups.length)?d.groups:DEFAULT_CATS.map(g=>({...g}));
+      chartColors=(d.chartColors&&d.chartColors.length===groups.length)?d.chartColors:groups.map((g,i)=>DEFAULT_CHART_COLORS[i%DEFAULT_CHART_COLORS.length]);
       chartStyle=d.chartStyle||"bar";
       budgets=d.budgets||{};
       goals=d.goals||[];
+      openGroups=Object.fromEntries(groups.map(g=>[g.key,(d.openGroups&&g.key in d.openGroups)?d.openGroups[g.key]:true]));
+      sharedWith=d.sharedWith||[];
+      watching=d.watching||[];
     } else {
       years={[REAL_YEAR]:blankYear()}; year=REAL_YEAR; monthSel=REAL_MONTH;
-      colors={...PRESETS[0].colors}; chartColors=DEFAULT_CHART_COLORS.slice(); chartStyle="bar";
-      budgets={}; goals=[];
+      colors={...PRESETS[0].colors}; groups=DEFAULT_CATS.map(g=>({...g})); chartColors=DEFAULT_CHART_COLORS.slice(); chartStyle="bar";
+      budgets={}; goals=[]; sharedWith=[]; watching=[];
+      openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
       await setDoc(doc(db,"users",uid),{name:user.displayName||user.email.split("@")[0],email:user.email,createdAt:serverTimestamp()},{merge:true});
-      await setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,chartColors,chartStyle,budgets,goals});
+      await setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,sharedWith,sharedWithUids:[],watching});
     }
     loaded=true;
     applyThemeVars();
+    subscribeWatched();
     renderShell();
     renderAll();
     applyingRemote=false;
@@ -403,8 +456,66 @@ function scheduleSave(){
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     const stateRef=doc(db,"users",user.uid,"data","state");
-    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,chartColors,chartStyle,budgets,goals}).catch(()=>{});
+    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching}).catch(()=>{});
   },500);
+}
+
+// ───────── VISÃO COMBINADA (só leitura, tempo real) ─────────
+function subscribeWatched(){
+  const activeUids=new Set(watching.map(w=>w.uid));
+  Object.keys(watchedUnsubs).forEach(uid=>{ if(!activeUids.has(uid)){ watchedUnsubs[uid](); delete watchedUnsubs[uid]; delete watchedData[uid]; } });
+  watching.forEach(w=>{
+    if(watchedUnsubs[w.uid]) return;
+    const ref=doc(db,"users",w.uid,"data","state");
+    watchedUnsubs[w.uid]=onSnapshot(ref, snap=>{
+      watchedData[w.uid]={ok:snap.exists(),data:snap.exists()?snap.data():null,email:w.email};
+      if(tab==="combinada") renderAll();
+    }, ()=>{
+      watchedData[w.uid]={ok:false,email:w.email};
+      if(tab==="combinada") renderAll();
+    });
+  });
+}
+async function shareWith(rawEmail){
+  const email=emailDocId(rawEmail);
+  if(!email) return;
+  try{
+    const snap=await getDoc(doc(db,"emailIndex",email));
+    if(!snap.exists()){ alert("Não encontrei nenhuma conta Log Pose com esse e-mail."); return; }
+    const targetUid=snap.data().uid;
+    if(targetUid===user.uid){ alert("Esse é o seu próprio e-mail."); return; }
+    if(sharedWith.some(s=>s.uid===targetUid)) return;
+    sharedWith=[...sharedWith,{uid:targetUid,email}];
+    scheduleSave(); renderAll();
+  }catch(e){ alert("Não foi possível compartilhar agora."); }
+}
+function unshareWith(uid){ sharedWith=sharedWith.filter(s=>s.uid!==uid); scheduleSave(); renderAll(); }
+async function watchEmail(rawEmail){
+  const email=emailDocId(rawEmail);
+  if(!email) return;
+  try{
+    const snap=await getDoc(doc(db,"emailIndex",email));
+    if(!snap.exists()){ alert("Não encontrei nenhuma conta Log Pose com esse e-mail."); return; }
+    const targetUid=snap.data().uid;
+    if(targetUid===user.uid){ alert("Esse é o seu próprio e-mail."); return; }
+    if(watching.some(w=>w.uid===targetUid)) return;
+    watching=[...watching,{uid:targetUid,email}];
+    scheduleSave(); subscribeWatched(); renderAll();
+  }catch(e){ alert("Não foi possível adicionar agora."); }
+}
+function unwatch(uid){
+  watching=watching.filter(w=>w.uid!==uid);
+  if(watchedUnsubs[uid]){ watchedUnsubs[uid](); delete watchedUnsubs[uid]; }
+  delete watchedData[uid];
+  scheduleSave(); renderAll();
+}
+function personTotals(yearsObj,em,forcedYear){
+  const y=yearsObj[forcedYear]||yearsObj[Object.keys(yearsObj)[0]]||blankYear();
+  const debt=sumByMonth(y.debtors);
+  const inc=sumByMonth(y.income).map((v,i)=>v+debt[i]);
+  const exp=sumByMonth(y.expenses);
+  const pat=sumByMonth(y.patrimonio);
+  return {income:inc[em]||0, expense:exp[em]||0, patrimonio:pat[em]||0, saldo:(inc[em]||0)-(exp[em]||0)-(pat[em]||0)};
 }
 
 // ───────── MUTAÇÕES ─────────
@@ -424,7 +535,12 @@ function updateValue(section,itemId,monthIdx,val){
   scheduleSave(); renderAll();
 }
 function toggleRecurring(section,itemId){
-  const y=years[year]; y[section]=y[section].map(it=>it.id===itemId?{...it,recurring:!it.recurring}:it);
+  const y=years[year];
+  const it=y[section].find(i=>i.id===itemId);
+  if(it&&!it.recurring){
+    if(!confirm('Marcar como recorrente copia o valor do mês em foco para todos os meses seguintes deste ano sempre que você editar esse valor, substituindo o que já estiver lá. Continuar?')) return;
+  }
+  y[section]=y[section].map(i=>i.id===itemId?{...i,recurring:!i.recurring}:i);
   scheduleSave(); renderAll();
 }
 function renameItem(section,itemId,name){
@@ -450,8 +566,11 @@ function addYear(){
 }
 function changeYear(y){ year=y; monthSel=(y===REAL_YEAR)?REAL_MONTH:0; scheduleSave(); renderAll(); }
 function addGoal(g){ goals=[...goals,{...g,id:nid("goal")}]; scheduleSave(); renderAll(); }
-function updateGoal(id,patch){ goals=goals.map(g=>g.id===id?{...g,...patch}:g); scheduleSave(); renderAll(); }
-function deleteGoal(id){ goals=goals.filter(g=>g.id!==id); scheduleSave(); renderAll(); }
+function deleteGoal(id){
+  goals=goals.filter(g=>g.id!==id);
+  Object.keys(years).forEach(y=>{ years[y].patrimonio=years[y].patrimonio.map(it=>it.goalId===id?{...it,goalId:null}:it); });
+  scheduleSave(); renderAll();
+}
 function setChartColor(i,v){ chartColors=chartColors.map((c,idx)=>idx===i?v:c); scheduleSave(); renderAll(); renderAppearancePanel(); }
 function setColor(k,v){ colors={...colors,[k]:v}; applyThemeVars(); scheduleSave(); renderShell(); renderAll(); renderAppearancePanel(); }
 
@@ -479,7 +598,8 @@ function computeAll(){
 // ───────── RENDER: SHELL (header/tabs) ─────────
 const TABS=[
   {key:"dashboard",label:"Painel"},{key:"faturamento",label:"Faturamento"},{key:"despesas",label:"Despesas"},
-  {key:"patrimonio",label:"Patrimônio"},{key:"devedores",label:"Devedores"},{key:"comparar",label:"Comparar"}
+  {key:"patrimonio",label:"Patrimônio"},{key:"devedores",label:"Devedores"},{key:"comparar",label:"Comparar"},
+  {key:"combinada",label:"Combinado"}
 ];
 function renderShell(){
   const yearSel=document.getElementById("yearSel");
@@ -509,8 +629,16 @@ function renderAppearancePanel(){
     <div style="margin-bottom:16px">${PRESETS.map(pr=>`<button class="preset-btn" data-preset="${pr.id}" style="background:${pr.colors.paper}"><span style="position:absolute;bottom:3px;right:3px;width:14px;height:14px;border-radius:50%;background:${pr.colors.positive};border:1px solid ${pr.colors.card}"></span></button>`).join("")}</div>
     <p class="lbl">Cores personalizadas</p>
     <div style="margin-bottom:16px">${fields.map(([k,l])=>`<div class="color-row"><span>${l}</span><label class="swatch" style="width:26px;height:26px;background:${colors[k]}"><input type="color" value="${colors[k]}" data-colorkey="${k}"></label></div>`).join("")}</div>
-    <p class="lbl">Cores das categorias (gráficos)</p>
-    <div style="margin-bottom:16px">${GROUPS.map((g,i)=>`<div class="color-row"><span>${g.label}</span><label class="swatch" style="width:26px;height:26px;background:${chartColors[i]}"><input type="color" value="${chartColors[i]}" data-chartcoloridx="${i}"></label></div>`).join("")}</div>
+    <p class="lbl">Categorias de despesa</p>
+    <div style="margin-bottom:12px">${groups.map((g,i)=>`<div class="color-row">
+      <label class="swatch" style="width:22px;height:22px;background:${chartColors[i]}"><input type="color" value="${chartColors[i]}" data-chartcoloridx="${i}"></label>
+      <input type="text" value="${esc(g.label)}" data-catrename="${g.key}" style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:12px;background:var(--paper);color:var(--text)">
+      <button data-catdel="${g.key}" style="background:none;border:none;color:var(--negative);cursor:pointer;padding:2px">🗑</button>
+    </div>`).join("")}</div>
+    <div class="add-row" style="margin-bottom:16px">
+      <input type="text" id="catAdd-inp" placeholder="Nova categoria">
+      <button id="catAdd-btn">＋ Adicionar</button>
+    </div>
     <p class="lbl">Estilo do gráfico principal</p>
     <div style="display:flex;gap:6px">
       ${[["bar","Barras"],["line","Linhas"],["area","Área"]].map(([id,l])=>`<button class="style-btn ${chartStyle===id?"active":""}" data-style="${id}">${l}</button>`).join("")}
@@ -518,6 +646,9 @@ function renderAppearancePanel(){
   p.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const pr=PRESETS.find(x=>x.id===b.dataset.preset); colors={...pr.colors}; applyThemeVars(); scheduleSave(); renderShell(); renderAll();});
   p.querySelectorAll("[data-colorkey]").forEach(inp=>inp.oninput=()=>setColor(inp.dataset.colorkey,inp.value));
   p.querySelectorAll("[data-chartcoloridx]").forEach(inp=>inp.oninput=()=>setChartColor(Number(inp.dataset.chartcoloridx),inp.value));
+  p.querySelectorAll("[data-catrename]").forEach(inp=>inp.onchange=()=>renameCategory(inp.dataset.catrename,inp.value.trim()||inp.dataset.catrename));
+  p.querySelectorAll("[data-catdel]").forEach(b=>b.onclick=()=>{ if(confirm("Excluir esta categoria?")) deleteCategory(b.dataset.catdel); });
+  wireAddRow("catAdd", name=>addCategory(name));
   p.querySelectorAll("[data-style]").forEach(b=>b.onclick=()=>{chartStyle=b.dataset.style;scheduleSave();renderAll();renderAppearancePanel();});
 }
 document.getElementById("btnAparencia").onclick=(e)=>{
@@ -539,7 +670,7 @@ document.getElementById("appearancePanel").addEventListener("click",e=>e.stopPro
 window.addEventListener("resize",()=>document.getElementById("appearancePanel").classList.remove("open"));
 
 // ───────── RENDER: TABELA MENSAL (genérica) ─────────
-function monthlyTableHTML(items,section,accent,lockedRow){
+function monthlyTableHTML(items,section,accent,lockedRow,extraCol){
   const totals=sumByMonth(lockedRow?[...items,lockedRow]:items);
   const idxs=isAllMonths()?MONTHS.map((_,i)=>i):[effectiveMonth()];
   const showTotal=idxs.length>1;
@@ -549,6 +680,7 @@ function monthlyTableHTML(items,section,accent,lockedRow){
     rowsHtml+=`<tr>
       <td><button class="icon-btn rec ${it.recurring?"on":""}" data-rec="${it.id}" title="Repetir valor">↻</button></td>
       <td><input class="cell-input" value="${esc(it.name)}" data-rename="${it.id}"></td>
+      ${extraCol?`<td>${extraCol.render(it)}</td>`:""}
       ${idxs.map(i=>`<td class="num"><input class="cell-input num" type="number" placeholder="0" value="${it.values[i]===0?"":it.values[i]}" data-val="${it.id}" data-month="${i}"></td>`).join("")}
       ${showTotal?`<td class="num" style="font-weight:600">${fmt(rowTotal)}</td>`:""}
       <td><button class="icon-btn del" data-del="${it.id}" title="Remover">🗑</button></td>
@@ -558,22 +690,64 @@ function monthlyTableHTML(items,section,accent,lockedRow){
     const rowTotal=sumArr(lockedRow.values);
     rowsHtml+=`<tr>
       <td>🔒</td><td style="font-style:italic;color:var(--muted)">${esc(lockedRow.name)} <small>(automático)</small></td>
+      ${extraCol?`<td></td>`:""}
       ${idxs.map(i=>`<td class="num" style="color:var(--muted)">${lockedRow.values[i]?fmt(lockedRow.values[i]):"—"}</td>`).join("")}
       ${showTotal?`<td class="num" style="color:var(--muted);font-weight:600">${fmt(rowTotal)}</td>`:""}
       <td></td></tr>`;
   }
   if(!items.length && !lockedRow) rowsHtml=`<tr><td colspan="16" class="empty-msg">Nenhum item ainda. Adicione abaixo.</td></tr>`;
   return `<div style="overflow-x:auto"><table>
-    <thead><tr><th style="width:26px"></th><th>Item</th>${idxs.map(i=>`<th style="text-align:right">${MONTHS[i]}</th>`).join("")}${showTotal?`<th style="text-align:right">Total</th>`:""}<th style="width:28px"></th></tr></thead>
+    <thead><tr><th style="width:26px"></th><th>Item</th>${extraCol?`<th>${extraCol.label}</th>`:""}${idxs.map(i=>`<th style="text-align:right">${MONTHS[i]}</th>`).join("")}${showTotal?`<th style="text-align:right">Total</th>`:""}<th style="width:28px"></th></tr></thead>
     <tbody>${rowsHtml}</tbody>
-    <tfoot><tr><td></td><td>Total</td>${idxs.map(i=>`<td class="num" style="color:${accent}">${fmt(totals[i])}</td>`).join("")}${showTotal?`<td class="num" style="color:${accent}">${fmt(sumArr(totals))}</td>`:""}<td></td></tr></tfoot>
+    <tfoot><tr><td></td><td>Total</td>${extraCol?`<td></td>`:""}${idxs.map(i=>`<td class="num" style="color:${accent}">${fmt(totals[i])}</td>`).join("")}${showTotal?`<td class="num" style="color:${accent}">${fmt(sumArr(totals))}</td>`:""}<td></td></tr></tfoot>
   </table></div>`;
 }
-function wireMonthlyTable(container,section){
+function wireMonthlyTable(container,section,extraCol){
   container.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>toggleRecurring(section,b.dataset.rec));
   container.querySelectorAll("[data-rename]").forEach(inp=>inp.onchange=()=>renameItem(section,inp.dataset.rename,inp.value));
   container.querySelectorAll("[data-val]").forEach(inp=>inp.onchange=()=>updateValue(section,inp.dataset.val,Number(inp.dataset.month),inp.value));
   container.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ if(confirm("Remover item?")) deleteItem(section,b.dataset.del); });
+  if(extraCol) extraCol.wire(container);
+}
+const catExtraCol={
+  label:"Categoria",
+  render: it=>`<select data-catmove="${it.id}" style="font-size:11.5px;border:1px solid var(--line);border-radius:6px;padding:3px 4px;background:var(--paper);color:var(--text);max-width:140px">${groups.map(g=>`<option value="${g.key}" ${g.key===it.group?"selected":""}>${esc(g.label)}</option>`).join("")}</select>`,
+  wire: container=>container.querySelectorAll("[data-catmove]").forEach(sel=>sel.onchange=()=>moveItemCategory(sel.dataset.catmove,sel.value))
+};
+function moveItemCategory(itemId,newGroup){
+  const y=years[year]; y.expenses=y.expenses.map(it=>it.id===itemId?{...it,group:newGroup}:it);
+  scheduleSave(); renderAll();
+}
+const goalExtraCol={
+  label:"Meta",
+  render: it=>`<select data-goalassign="${it.id}" style="font-size:11.5px;border:1px solid var(--line);border-radius:6px;padding:3px 4px;background:var(--paper);color:var(--text);max-width:140px">
+    <option value="">Nenhuma</option>
+    ${goals.map(g=>`<option value="${g.id}" ${g.id===it.goalId?"selected":""}>${esc(g.name)}</option>`).join("")}
+    <option value="__new__">+ Nova meta…</option>
+  </select>`,
+  wire: container=>container.querySelectorAll("[data-goalassign]").forEach(sel=>sel.onchange=()=>{
+    if(sel.value==="__new__"){
+      const name=prompt("Nome da nova meta:");
+      if(!name){ sel.value=it_goal(sel.dataset.goalassign); return; }
+      const target=Number(prompt("Valor alvo da meta:"));
+      if(!target||target<=0){ sel.value=it_goal(sel.dataset.goalassign); return; }
+      const newGoal={name,target,month:REAL_MONTH,year:REAL_YEAR,id:nid("goal")};
+      goals=[...goals,newGoal];
+      assignItemGoal(sel.dataset.goalassign,newGoal.id);
+    } else {
+      assignItemGoal(sel.dataset.goalassign, sel.value||null);
+    }
+  })
+};
+function it_goal(itemId){ const it=data().patrimonio.find(i=>i.id===itemId); return (it&&it.goalId)||""; }
+function assignItemGoal(itemId,goalId){
+  const y=years[year]; y.patrimonio=y.patrimonio.map(it=>it.id===itemId?{...it,goalId:goalId||null}:it);
+  scheduleSave(); renderAll();
+}
+function goalCurrent(goalId){
+  let total=0;
+  Object.values(years).forEach(y=>{ y.patrimonio.forEach(it=>{ if(it.goalId===goalId) total+=sumArr(it.values); }); });
+  return total;
 }
 function addRowHTML(placeholder,id){
   return `<div class="add-row"><input type="text" id="${id}-inp" placeholder="${esc(placeholder)}"><button id="${id}-btn">＋ Adicionar</button></div>`;
@@ -599,7 +773,7 @@ function renderDashboard(c){
 
   const byGroup={};
   data().expenses.forEach(it=>{ const g=it.group||"outros"; byGroup[g]=(byGroup[g]||0)+sumArr(it.values); });
-  const groupBreakdown=GROUPS.map((g,i)=>({key:g.key,label:g.label,color:groupColor(chartColors,g.key),value:byGroup[g.key]||0,idx:i})).filter(g=>g.value>0);
+  const groupBreakdown=groups.map((g,i)=>({key:g.key,label:g.label,color:groupColor(chartColors,g.key),value:byGroup[g.key]||0,idx:i})).filter(g=>g.value>0);
 
   const vencimentos=data().expenses.map(it=>({name:it.name,day:parseDueDay(it.name),value:it.values[em]})).filter(v=>v.day&&v.value).sort((a,b)=>a.day-b.day);
 
@@ -613,7 +787,7 @@ function renderDashboard(c){
   else if(incomeAnnual>0) insights.push("Nenhum mês fechou no vermelho neste ano — bom controle.");
   if(incomeAnnual>0) insights.push(`Taxa de poupança do ano: ${Math.round((incomeAnnual-expenseAnnual)/incomeAnnual*100)}% do faturamento.`);
   if(debtAnnual>0) insights.push(`Pessoas te devem o equivalente a ${fmt(debtAnnual)} somados ao longo do ano.`);
-  const overBudget=GROUPS.filter(g=>{ const b=budgets[g.key]; if(!b) return false; const spent=sumArr(data().expenses.filter(it=>it.group===g.key).map(it=>it.values[em]||0)); return spent>b; });
+  const overBudget=groups.filter(g=>{ const b=budgets[g.key]; if(!b) return false; const spent=sumArr(data().expenses.filter(it=>it.group===g.key).map(it=>it.values[em]||0)); return spent>b; });
   if(overBudget.length>0) insights.push(`Em ${MONTHS[em]}, você passou da meta em: ${overBudget.map(g=>g.label).join(", ")}.`);
 
   c.innerHTML=`
@@ -748,7 +922,7 @@ function renderDespesas(c){
   }
   html+=`<p style="font-size:11.5px;color:var(--muted);margin-top:12px">Total do ano: <strong style="color:var(--text)">${fmtFull(expenseAnnual)}</strong></p></div>`;
 
-  GROUPS.forEach((g,gi)=>{
+  groups.forEach((g,gi)=>{
     const items=data().expenses.filter(it=>it.group===g.key);
     const spent=sumArr(items.map(it=>it.values[em]||0));
     const color=groupColor(chartColors,g.key);
@@ -779,12 +953,12 @@ function renderDespesas(c){
   c.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>{ const k=b.dataset.toggle; openGroups[k]=!openGroups[k]; renderAll(); });
   c.querySelectorAll("[data-chartcoloridx3]").forEach(inp=>inp.oninput=()=>setChartColor(Number(inp.dataset.chartcoloridx3),inp.value));
   c.querySelectorAll("[data-budget]").forEach(inp=>inp.onchange=()=>{ budgets[inp.dataset.budget]=inp.value===""?0:Number(inp.value); scheduleSave(); renderAll(); });
-  GROUPS.forEach(g=>{
+  groups.forEach(g=>{
     if(!openGroups[g.key]) return;
     const items=data().expenses.filter(it=>it.group===g.key);
     const tableDiv=document.getElementById("groupTable-"+g.key);
-    tableDiv.innerHTML=monthlyTableHTML(items,"expenses",groupColor(chartColors,g.key));
-    wireMonthlyTable(tableDiv,"expenses");
+    tableDiv.innerHTML=monthlyTableHTML(items,"expenses",groupColor(chartColors,g.key),null,catExtraCol);
+    wireMonthlyTable(tableDiv,"expenses",catExtraCol);
     wireAddRow("groupAdd-"+g.key,name=>addItem("expenses",name,g.key));
   });
 }
@@ -798,21 +972,22 @@ function renderPatrimonio(c){
     <p style="font-size:12px;color:var(--muted);margin-top:12px">${isAllMonths()?`O total de cada linha é a soma dos valores lançados no ano ${year}.`:`Mostrando apenas ${MONTHS[effectiveMonth()]}.`}</p>
     <div id="goalsPanel" style="margin-top:26px"></div>
   </div>`;
-  document.getElementById("patTable").innerHTML=monthlyTableHTML(data().patrimonio,"patrimonio","var(--accent2)");
-  wireMonthlyTable(document.getElementById("patTable"),"patrimonio");
+  document.getElementById("patTable").innerHTML=monthlyTableHTML(data().patrimonio,"patrimonio","var(--accent2)",null,goalExtraCol);
+  wireMonthlyTable(document.getElementById("patTable"),"patrimonio",goalExtraCol);
   wireAddRow("patAdd",name=>addItem("patrimonio",name));
   renderGoalsPanel(document.getElementById("goalsPanel"));
 }
 function renderGoalsPanel(el){
   el.innerHTML=`<p class="card-title">🎯 Metas de poupança</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:-10px">O valor guardado de cada meta soma sozinho, a partir dos itens de Patrimônio marcados com ela (coluna "Meta" na tabela acima).</p>
     ${goals.map(g=>{
-      const pct=g.target?Math.min(100,Math.round(g.current/g.target*100)):0;
+      const current=goalCurrent(g.id);
+      const pct=g.target?Math.min(100,Math.round(current/g.target*100)):0;
       const monthsLeft=(g.year-REAL_YEAR)*12+(g.month-REAL_MONTH);
       return `<div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:13.5px;font-weight:600">${esc(g.name)}</span><button data-delgoal="${g.id}" style="background:none;border:none;color:var(--negative);cursor:pointer">🗑</button></div>
         <div class="budget-bar-track" style="margin-bottom:6px"><div class="budget-bar-fill" style="width:${pct}%;background:var(--accent2)"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);flex-wrap:wrap;gap:6px"><span>${fmt(g.current)} de ${fmt(g.target)} (${pct}%)</span><span>${monthsLeft>=0?`faltam ${monthsLeft} meses (até ${MONTHS[g.month]}/${g.year})`:"prazo vencido"}</span></div>
-        <input type="number" data-goalcurrent="${g.id}" value="${g.current||""}" placeholder="valor atual" style="width:130px;margin-top:8px;border:1px solid var(--line);border-radius:6px;padding:7px 8px;font-family:var(--mono);background:var(--paper);color:var(--text)">
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);flex-wrap:wrap;gap:6px"><span>${fmt(current)} de ${fmt(g.target)} (${pct}%)</span><span>${monthsLeft>=0?`faltam ${monthsLeft} meses (até ${MONTHS[g.month]}/${g.year})`:"prazo vencido"}</span></div>
       </div>`;
     }).join("")}
     <div style="display:grid;grid-template-columns:1.4fr .8fr .9fr .6fr;gap:8px;margin-top:10px">
@@ -823,10 +998,9 @@ function renderGoalsPanel(el){
     </div>
     <button id="btnAddGoal" style="margin-top:10px;display:flex;align-items:center;gap:6px;background:var(--ink);color:var(--onInk);border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer">＋ Nova meta</button>`;
   el.querySelectorAll("[data-delgoal]").forEach(b=>b.onclick=()=>deleteGoal(b.dataset.delgoal));
-  el.querySelectorAll("[data-goalcurrent]").forEach(inp=>inp.onchange=()=>updateGoal(inp.dataset.goalcurrent,{current:Number(inp.value)||0}));
   document.getElementById("btnAddGoal").onclick=()=>{
     const name=document.getElementById("goalName").value.trim(), target=Number(document.getElementById("goalTarget").value);
-    if(name&&target>0){ addGoal({name,target,current:0,month:Number(document.getElementById("goalMonth").value),year:Number(document.getElementById("goalYear").value)}); }
+    if(name&&target>0){ addGoal({name,target,month:Number(document.getElementById("goalMonth").value),year:Number(document.getElementById("goalYear").value)}); }
   };
 }
 
@@ -889,6 +1063,56 @@ function renderComparar(c){
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:t.muted}},y:{ticks:{color:t.muted}}}}});
 }
 
+// ───────── RENDER: COMBINADO ─────────
+function renderCombinada(c){
+  const em=effectiveMonth();
+  const myCalc=computeAll();
+  const others=watching.map(w=>({email:w.email, uid:w.uid, d:watchedData[w.uid]}));
+  const perPerson=[{label:(user.displayName||user.email.split("@")[0])+" (você)", income:myCalc.monthIncome, expense:myCalc.monthExpense, patrimonio:myCalc.monthPatrimonio, saldo:myCalc.monthSaldo}];
+  others.forEach(o=>{
+    if(o.d&&o.d.ok&&o.d.data&&o.d.data.years){
+      perPerson.push({label:o.email, ...personTotals(o.d.data.years,em,year)});
+    }
+  });
+  const combined=perPerson.reduce((acc,p)=>({income:acc.income+p.income,expense:acc.expense+p.expense,patrimonio:acc.patrimonio+p.patrimonio,saldo:acc.saldo+p.saldo}),{income:0,expense:0,patrimonio:0,saldo:0});
+  const pending=others.filter(o=>o.d&&!o.d.ok);
+
+  c.innerHTML=`
+    <div class="card" style="margin-bottom:18px">
+      <p class="card-title">Visão combinada — ${MONTHS[em]}/${year}</p>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:-8px">Some outras contas do Log Pose (leitura em tempo real, ninguém edita os dados de ninguém aqui).</p>
+      <div class="kpi-grid" style="margin-top:12px">
+        <div class="kpi"><div class="kpi-lbl">Faturamento combinado</div><div class="kpi-val" style="color:var(--positive)">${fmt(combined.income)}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Despesas combinadas</div><div class="kpi-val" style="color:var(--negative)">${fmt(combined.expense)}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Guardado combinado</div><div class="kpi-val" style="color:var(--accent2)">${fmt(combined.patrimonio)}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Saldo combinado</div><div class="kpi-val" style="color:${combined.saldo>=0?"var(--positive)":"var(--negative)"}">${fmt(combined.saldo)}</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:18px">
+      <p class="card-title">Por pessoa em ${MONTHS[em]}</p>
+      ${perPerson.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px">
+        <span>${esc(p.label)}</span>
+        <span style="font-family:var(--mono);font-size:12px"><span style="color:var(--positive)">${fmt(p.income)}</span> − <span style="color:var(--negative)">${fmt(p.expense)}</span> − <span style="color:var(--accent2)">${fmt(p.patrimonio)}</span> = <strong style="color:${p.saldo>=0?"var(--positive)":"var(--negative)"}">${fmt(p.saldo)}</strong></span>
+      </div>`).join("")}
+      ${pending.length?`<p style="font-size:12px;color:var(--muted);margin-top:10px">⏳ Aguardando compartilhamento de: ${pending.map(o=>esc(o.email)).join(", ")} (essa pessoa precisa te adicionar em "Compartilhar meus dados com" na conta dela).</p>`:""}
+    </div>
+    <div class="card">
+      <p class="card-title">Compartilhamento</p>
+      <p style="font-size:12px;color:var(--muted)">É uma via de mão dupla: pra você ver os dados de alguém, essa pessoa também precisa te adicionar em "Compartilhar meus dados com" na conta dela.</p>
+      <p style="font-size:12.5px;font-weight:600;margin:14px 0 4px">Compartilhar meus dados com:</p>
+      <div class="add-row"><input type="email" id="shareAdd-inp" placeholder="e-mail da pessoa"><button id="shareAdd-btn">Compartilhar</button></div>
+      <div style="margin-top:8px">${sharedWith.length?sharedWith.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:12.5px"><span>${esc(s.email)}</span><button data-unshare="${s.uid}" style="background:none;border:none;color:var(--negative);cursor:pointer">🗑</button></div>`).join(""):`<p class="empty-msg">Ninguém ainda.</p>`}</div>
+      <p style="font-size:12.5px;font-weight:600;margin:18px 0 4px">Ver os dados de:</p>
+      <div class="add-row"><input type="email" id="watchAdd-inp" placeholder="e-mail da pessoa"><button id="watchAdd-btn">Adicionar</button></div>
+      <div style="margin-top:8px">${watching.length?watching.map(w=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:12.5px"><span>${esc(w.email)}${watchedData[w.uid]&&!watchedData[w.uid].ok?' <span style="color:var(--accent2)">(aguardando)</span>':""}</span><button data-unwatch="${w.uid}" style="background:none;border:none;color:var(--negative);cursor:pointer">🗑</button></div>`).join(""):`<p class="empty-msg">Ninguém ainda.</p>`}</div>
+    </div>`;
+
+  document.getElementById("shareAdd-btn").onclick=()=>{ const v=document.getElementById("shareAdd-inp").value.trim(); if(v){ shareWith(v); document.getElementById("shareAdd-inp").value=""; } };
+  document.getElementById("watchAdd-btn").onclick=()=>{ const v=document.getElementById("watchAdd-inp").value.trim(); if(v){ watchEmail(v); document.getElementById("watchAdd-inp").value=""; } };
+  c.querySelectorAll("[data-unshare]").forEach(b=>b.onclick=()=>unshareWith(b.dataset.unshare));
+  c.querySelectorAll("[data-unwatch]").forEach(b=>b.onclick=()=>unwatch(b.dataset.unwatch));
+}
+
 // ───────── RENDER: DISPATCH ─────────
 function renderAll(){
   if(!loaded) return;
@@ -899,6 +1123,7 @@ function renderAll(){
   else if(tab==="patrimonio") renderPatrimonio(content);
   else if(tab==="devedores") renderDevedores(content);
   else if(tab==="comparar") renderComparar(content);
+  else if(tab==="combinada") renderCombinada(content);
 }
 </script>
 <script>
