@@ -26,7 +26,6 @@ input[type=number]{-moz-appearance:textfield;}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;}
 .fin-input:focus{outline:none;background:#1F7A5C22;}
 a{color:inherit;}
-#debugBox{position:fixed;bottom:8px;left:8px;right:8px;background:#000;color:#0f0;font-family:monospace;font-size:11px;padding:8px;border-radius:6px;z-index:9999;max-height:120px;overflow:auto;display:none;white-space:pre-wrap;word-break:break-all;}
 
 /* LOGIN */
 #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;}
@@ -114,7 +113,6 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 </style>
 </head>
 <body>
-<div id="debugBox"></div>
 
 <!-- LOGIN -->
 <div id="loginScreen">
@@ -191,8 +189,6 @@ import {
   getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// a chave é montada em duas partes de propósito: colar o texto inteiro em uma
-// única string costuma ser "mascarado" (trocado por bolinhas) ao copiar deste chat
 const _apiKeyPart1 = "AIzaSyDnAT3jlg28S4H9yVQZc6G16ht";
 const _apiKeyPart2 = "-6ZhapT4";
 const firebaseConfig = {
@@ -203,13 +199,6 @@ const firebaseConfig = {
   messagingSenderId: "645195653865",
   appId: "1:645195653865:web:9325398784bcbf6927c678"
 };
-
-// caixinha verde de debug no rodapé — mostra a config real que o navegador está usando
-(function(){
-  const box=document.getElementById("debugBox");
-  box.style.display="block";
-  box.textContent="apiKey usada (tamanho "+firebaseConfig.apiKey.length+"): "+JSON.stringify(firebaseConfig.apiKey)+"\ncodificada: "+encodeURIComponent(firebaseConfig.apiKey);
-})();
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
