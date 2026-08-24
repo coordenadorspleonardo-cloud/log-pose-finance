@@ -76,8 +76,8 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .icon-btn{border:none;background:transparent;cursor:pointer;color:var(--muted);display:inline-flex;padding:4px;}
 .icon-btn.del{color:var(--negative);}
 .icon-btn.rec.on{color:var(--accent2);}
-.add-row{display:flex;gap:8px;margin-top:10px;}
-.add-row input{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;background:var(--card);color:var(--text);}
+.add-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.add-row input,.add-row select{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;background:var(--card);color:var(--text);min-width:90px;}
 .add-row button{display:flex;align-items:center;gap:6px;background:var(--ink);color:var(--onInk);border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;}
 
 /* KPI / DASHBOARD */
@@ -108,6 +108,102 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .color-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-size:12.5px;}
 .style-btn{flex:1;padding:7px 4px;font-size:12px;border-radius:8px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--text);}
 .style-btn.active{border-color:var(--positive);background:#1F7A5C18;color:var(--positive);}
+
+/* Navegação Rotina/Finanças */
+.toplevel{display:flex;gap:8px;padding:14px 24px 0;max-width:1100px;margin:0 auto;}
+.toplevel button{flex:1;max-width:220px;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:12px 12px 0 0;border:1px solid var(--line);border-bottom:none;background:var(--paper);color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;}
+.toplevel button.active{background:var(--card);color:var(--text);}
+.fin-controls{display:flex;gap:8px;padding:10px 24px;justify-content:flex-end;flex-wrap:wrap;background:var(--card);border-bottom:1px solid var(--line);}
+.fin-controls select,.fin-controls button{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;background:var(--paper);color:var(--text);cursor:pointer;}
+
+/* ROTINA */
+.streak-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.streak-chip{background:#ffffff1a;border-radius:8px;padding:5px 9px;font-size:11.5px;display:flex;align-items:center;gap:5px;font-family:var(--mono);}
+.ghost-row-btn{background:none;border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--muted);cursor:pointer;}
+.task-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.task-row:last-child{border-bottom:none;}
+.task-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.task-left.stack-full{flex-basis:100%;}
+.chk{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;color:#fff;font-size:13px;}
+.chk.on{background:var(--positive);border-color:var(--positive);}
+.row-input{flex:1;border:none;background:transparent;font-size:13.5px;color:var(--text);padding:2px;min-width:60px;}
+.row-input.wide{min-width:190px;}
+.row-input.done-text{color:var(--muted);text-decoration:line-through;}
+.time-input{font-family:var(--mono);font-size:11px;color:var(--muted);border:none;background:transparent;width:56px;text-align:right;flex-shrink:0;}
+.src-badge{font-size:9.5px;padding:2px 6px;border-radius:5px;white-space:nowrap;flex-shrink:0;}
+.src-badge.treino{background:#1F7A5C22;color:var(--positive);}
+.src-badge.estudo{background:#B8963E22;color:var(--accent2);}
+.src-badge.repeat{background:var(--line);color:var(--muted);}
+.habit-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.habit-row:last-child{border-bottom:none;}
+.habit-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
+.habit-left.stack-full{flex-basis:100%;}
+.habit-emoji{width:32px;height:32px;border-radius:9px;background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.habit-streak{font-family:var(--mono);font-size:11px;color:var(--accent2);flex-shrink:0;}
+.dots{display:flex;gap:4px;}
+.dot{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--line);cursor:pointer;background:transparent;flex-shrink:0;}
+.dot.on{background:var(--positive);border-color:var(--positive);}
+.dot.today{box-shadow:0 0 0 2px var(--accent2);}
+.segmented{display:flex;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:14px;gap:3px;}
+.segmented button{flex:1;border:none;background:transparent;padding:7px 8px;font-size:12px;border-radius:7px;cursor:pointer;color:var(--muted);}
+.segmented button.active{background:var(--card);color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08);}
+.agenda-day-hd{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:12px 0 4px;}
+.agenda-day-hd:first-child{margin-top:0;}
+.agenda-item{display:flex;gap:12px;padding:8px 2px;border-bottom:1px solid var(--line);align-items:flex-start;}
+.agenda-item:last-child{border-bottom:none;}
+.agenda-time{font-family:var(--mono);font-size:12px;color:var(--accent2);width:44px;flex-shrink:0;padding-top:1px;}
+.agenda-title{font-size:13px;}
+.agenda-tag{font-size:10.5px;color:var(--muted);}
+.empty-hint{font-size:11.5px;color:var(--muted);padding:6px 2px;}
+.routine-row{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.routine-row:last-child{border-bottom:none;}
+.routine-day{width:34px;flex-shrink:0;font-size:11.5px;color:var(--muted);font-family:var(--mono);}
+.routine-input{flex:1;border:none;background:transparent;font-size:13px;color:var(--text);min-width:0;}
+.routine-input.wide{flex-basis:100%;margin-top:2px;}
+.subtab-row{display:flex;gap:6px;margin-bottom:12px;}
+.subtab{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font-size:12px;color:var(--muted);cursor:pointer;}
+.subtab.active{background:var(--positive);color:#fff;border-color:var(--positive);}
+.ring-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.ring{position:relative;width:104px;height:104px;flex-shrink:0;}
+.ring svg{transform:rotate(-90deg);}
+.ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ring-label b{font-family:var(--mono);font-size:17px;}
+.ring-label span{font-size:10px;color:var(--muted);}
+.quick-add{display:flex;gap:6px;flex-wrap:wrap;}
+.quick-add button{background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12px;color:var(--text);cursor:pointer;font-family:var(--mono);}
+.quick-add button:hover{border-color:var(--positive);color:var(--positive);}
+.quick-add button.other{font-family:var(--sans);color:var(--muted);}
+.goal-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:10px;}
+.goal-row button{background:none;border:none;color:var(--accent2);cursor:pointer;font-size:11.5px;text-decoration:underline;padding:0;}
+.water-hist{display:flex;gap:5px;margin-top:10px;flex-wrap:wrap;}
+.wh-item{flex:1;text-align:center;min-width:34px;}
+.wh-day{font-size:9.5px;color:var(--muted);margin-bottom:4px;white-space:nowrap;}
+.wh-mark{width:100%;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-family:var(--mono);}
+.wh-mark.ok{background:#1F7A5C22;color:var(--positive);}
+.wh-mark.warn{background:#B8963E22;color:var(--accent2);}
+.wh-mark.no{background:#C1443D18;color:var(--negative);}
+.goal-item{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+.goal-item-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px;font-weight:600;}
+.bar-track{height:6px;background:var(--line);border-radius:999px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:999px;background:var(--positive);}
+.goal-sub{font-size:11px;color:var(--muted);margin-top:5px;}
+.week-bars{display:flex;align-items:flex-end;gap:8px;height:90px;}
+.week-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;}
+.week-bar{width:100%;background:var(--positive);border-radius:4px 4px 0 0;min-height:3px;}
+.week-bar-lbl{font-size:9.5px;color:var(--muted);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;}
+.cal-dow{font-size:10px;color:var(--muted);padding-bottom:4px;}
+.cal-day{aspect-ratio:1;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;background:var(--paper);}
+.cal-day.today{outline:2px solid var(--accent2);}
+.cal-dot{width:6px;height:6px;border-radius:50%;margin-top:2px;}
+.stopwatch{text-align:center;padding:4px 0;}
+.sw-label-inp{width:100%;text-align:center;border:1px dashed var(--line);background:transparent;border-radius:8px;padding:6px 8px;font-size:12.5px;color:var(--text);margin-bottom:14px;}
+.sw-time{font-family:var(--mono);font-size:44px;font-weight:600;letter-spacing:1px;}
+.sw-controls{display:flex;gap:10px;justify-content:center;margin-top:16px;}
+.sw-btn{border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;}
+.sw-btn.start{background:var(--positive);color:#fff;}
+.sw-btn.pause{background:var(--accent2);color:#141414;}
+.sw-btn.reset{background:transparent;border:1px solid var(--line);color:var(--muted);}
 
 .empty-msg{padding:14px 8px;font-size:13px;color:var(--muted);}
 .badge{padding:6px 10px;border-radius:10px;font-size:11px;font-family:var(--mono);}
@@ -165,9 +261,6 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
         <div><h1>Log Pose</h1><p id="helloTxt"></p></div>
       </div>
       <div class="hd-right">
-        <select id="yearSel"></select>
-        <select id="monthSel"><option value="all">Todos os meses</option></select>
-        <button id="btnNovoAno">＋ Novo ano</button>
         <div class="appearance-btn">
           <button id="btnAparencia">🎨 Aparência</button>
           <div class="appearance-panel" id="appearancePanel"></div>
@@ -176,7 +269,18 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
       </div>
     </div>
   </header>
-  <nav class="tabs" id="tabsNav"></nav>
+  <div class="toplevel" id="toplevelNav">
+    <button id="btnTopRotina">🔄 Rotina</button>
+    <button id="btnTopFin">💰 Finanças</button>
+  </div>
+  <div id="finChrome">
+    <div class="fin-controls">
+      <select id="yearSel"></select>
+      <select id="monthSel"><option value="all">Todos os meses</option></select>
+      <button id="btnNovoAno">＋ Novo ano</button>
+    </div>
+    <nav class="tabs" id="tabsNav"></nav>
+  </div>
   <main id="content"></main>
 </div>
 
@@ -325,6 +429,10 @@ let sharedWith=[]; // [{uid,email}] — quem eu deixo ler meus dados
 let watching=[];   // [{uid,email}] — de quem eu quero ver os dados (só leitura)
 let watchedData={}, watchedUnsubs={};
 const emailDocId = email => String(email||"").trim().toLowerCase();
+// ── Rotina (hábitos, tarefas, agenda, água, treino/estudo) ──
+let appSection="rotina"; // "rotina" | "financas"
+function defaultRotina(){ return {tasks:[],habits:[],agenda:[],routineTreino:[],routineEstudo:[],waterLog:{},waterGoal:2950,goals:[],autoTaskDone:{}}; }
+let rotina=defaultRotina();
 
 function syncChartColors(){
   // mantém chartColors alinhado 1:1 com groups (mesmo tamanho, cor nova ciclando DEFAULT_CHART_COLORS)
@@ -441,13 +549,16 @@ function startDataListener(uid){
       sharedWith=d.sharedWith||[];
       watching=d.watching||[];
       wrapNames=d.wrapNames||false;
+      appSection=d.appSection||"rotina";
+      rotina={...defaultRotina(), ...(d.rotina||{})};
     } else {
       years={[REAL_YEAR]:blankYear()}; year=REAL_YEAR; monthSel=REAL_MONTH;
       colors={...PRESETS[0].colors}; groups=DEFAULT_CATS.map(g=>({...g})); chartColors=DEFAULT_CHART_COLORS.slice(); chartStyle="bar";
       budgets={}; goals=[]; sharedWith=[]; watching=[];
       openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
+      appSection="rotina"; rotina=defaultRotina();
       await setDoc(doc(db,"users",uid),{name:user.displayName||user.email.split("@")[0],email:user.email,createdAt:serverTimestamp()},{merge:true});
-      await setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,sharedWith,sharedWithUids:[],watching});
+      await setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,sharedWith,sharedWithUids:[],watching,appSection,rotina});
     }
     loaded=true;
     applyThemeVars();
@@ -462,7 +573,7 @@ function scheduleSave(){
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     const stateRef=doc(db,"users",user.uid,"data","state");
-    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames}).catch(()=>{});
+    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames,appSection,rotina}).catch(()=>{});
   },500);
 }
 
@@ -607,7 +718,14 @@ const TABS=[
   {key:"patrimonio",label:"Patrimônio"},{key:"devedores",label:"Devedores"},{key:"comparar",label:"Comparar"},
   {key:"combinada",label:"Combinado"}
 ];
+function goSection(s){ appSection=s; scheduleSave(); renderShell(); renderAll(); }
 function renderShell(){
+  document.getElementById("btnTopRotina").classList.toggle("active", appSection==="rotina");
+  document.getElementById("btnTopFin").classList.toggle("active", appSection==="financas");
+  document.getElementById("btnTopRotina").onclick=()=>goSection("rotina");
+  document.getElementById("btnTopFin").onclick=()=>goSection("financas");
+  document.getElementById("finChrome").style.display = appSection==="financas" ? "block" : "none";
+
   const yearSel=document.getElementById("yearSel");
   yearSel.innerHTML=Object.keys(years).sort().map(y=>`<option value="${y}" ${Number(y)===Number(year)?"selected":""}>${y}</option>`).join("");
   yearSel.onchange=()=>changeYear(Number(yearSel.value));
@@ -1139,10 +1257,500 @@ function renderCombinada(c){
   c.querySelectorAll("[data-unwatch]").forEach(b=>b.onclick=()=>unwatch(b.dataset.unwatch));
 }
 
+// ───────── ROTINA: DATAS/HELPERS ─────────
+const DOW_FULL = ["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+const DOW_SHORT = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+function dateStr(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${day}`; }
+function todayStr(){ return dateStr(new Date()); }
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+
+// ───────── ROTINA: HÁBITOS ─────────
+function habitStreak(h){
+  let s=0, d=new Date();
+  while(h.log && h.log[dateStr(d)]){ s++; d=addDays(d,-1); }
+  return s;
+}
+function habitLast7(h){
+  const arr=[];
+  for(let i=6;i>=0;i--){ const d=addDays(new Date(),-i); arr.push({ds:dateStr(d), on: !!(h.log&&h.log[dateStr(d)])}); }
+  return arr;
+}
+function addHabit(name){ rotina.habits.push({id:nid("hab"), emoji:"⭐", name, log:{}}); scheduleSave(); renderAll(); }
+function renameHabit(id,name){ const h=rotina.habits.find(x=>x.id===id); if(h) h.name=name; scheduleSave(); }
+function deleteHabit(id){ rotina.habits=rotina.habits.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
+function toggleHabitDay(id,ds){
+  const h=rotina.habits.find(x=>x.id===id); if(!h) return;
+  h.log=h.log||{};
+  if(h.log[ds]) delete h.log[ds]; else h.log[ds]=true;
+  scheduleSave(); renderAll();
+}
+
+// ───────── ROTINA: TAREFAS ─────────
+function tasksToday(){
+  const wd=new Date().getDay(), ds=todayStr();
+  return rotina.tasks.filter(t=> t.repeatWeekly ? t.weekday===wd : t.date===ds);
+}
+function addTask(name,time,repeatWeekly){
+  const now=new Date();
+  rotina.tasks.push({id:nid("task"), name, time:time||"--:--", repeatWeekly:!!repeatWeekly, weekday:now.getDay(), date:todayStr(), done:{}});
+  scheduleSave(); renderAll();
+}
+function renameTask(id,name){ const t=rotina.tasks.find(x=>x.id===id); if(t) t.name=name; scheduleSave(); }
+function retimeTask(id,time){ const t=rotina.tasks.find(x=>x.id===id); if(t) t.time=time; scheduleSave(); }
+function deleteTask(id){ rotina.tasks=rotina.tasks.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
+function toggleTaskDone(id){
+  const t=rotina.tasks.find(x=>x.id===id); if(!t) return;
+  const ds=todayStr(); t.done=t.done||{};
+  if(t.done[ds]) delete t.done[ds]; else t.done[ds]=true;
+  scheduleSave(); renderAll();
+}
+function autoTasksToday(){
+  const wd=new Date().getDay();
+  const list=[];
+  rotina.routineTreino.filter(r=>r.weekday===wd).forEach(r=>list.push({...r,kind:"treino",label:"🏋️"}));
+  rotina.routineEstudo.filter(r=>r.weekday===wd).forEach(r=>list.push({...r,kind:"estudo",label:"📚"}));
+  return list.sort((a,b)=>a.time.localeCompare(b.time));
+}
+function toggleAutoDone(kind,id){
+  const key=todayStr()+"|"+kind+"|"+id;
+  if(rotina.autoTaskDone[key]) delete rotina.autoTaskDone[key]; else rotina.autoTaskDone[key]=true;
+  scheduleSave(); renderAll();
+}
+function markAllToday(){
+  const ds=todayStr();
+  tasksToday().forEach(t=>{ t.done=t.done||{}; t.done[ds]=true; });
+  autoTasksToday().forEach(a=>{ rotina.autoTaskDone[ds+"|"+a.kind+"|"+a.id]=true; });
+  scheduleSave(); renderAll();
+}
+
+// ───────── ROTINA: AGENDA ─────────
+function addAgendaItem(title,forTomorrow){
+  const d = forTomorrow ? addDays(new Date(),1) : new Date();
+  rotina.agenda.push({id:nid("ag"), date:dateStr(d), time:"--:--", title, tag:"Novo"});
+  scheduleSave(); renderAll();
+}
+function deleteAgendaItem(id){ rotina.agenda=rotina.agenda.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
+function agendaNext7Days(){
+  const days=[];
+  for(let i=0;i<7;i++){ const d=addDays(new Date(),i); const ds=dateStr(d); days.push({label: i===0?"Hoje":DOW_FULL[d.getDay()], items: rotina.agenda.filter(a=>a.date===ds).sort((a,b)=>a.time.localeCompare(b.time))}); }
+  return days;
+}
+function nextAgendaItem(){
+  const ds=todayStr(), now=new Date(), nowHM=String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");
+  const upcoming=rotina.agenda.filter(a=> a.date>ds || (a.date===ds && a.time>=nowHM)).sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
+  return upcoming[0]||null;
+}
+
+// ───────── ROTINA: TREINO/ESTUDO ─────────
+function addRoutineItem(kind,weekday,time,text){
+  const arr = kind==="treino"?rotina.routineTreino:rotina.routineEstudo;
+  arr.push({id:nid("rt"), weekday:Number(weekday), time:time||"--:--", text});
+  scheduleSave(); renderAll();
+}
+function editRoutineItem(kind,id,text){
+  const arr = kind==="treino"?rotina.routineTreino:rotina.routineEstudo;
+  const it=arr.find(x=>x.id===id); if(it) it.text=text;
+  scheduleSave();
+}
+function deleteRoutineItem(kind,id){
+  if(kind==="treino") rotina.routineTreino=rotina.routineTreino.filter(x=>x.id!==id);
+  else rotina.routineEstudo=rotina.routineEstudo.filter(x=>x.id!==id);
+  scheduleSave(); renderAll();
+}
+
+// ───────── ROTINA: ÁGUA ─────────
+function waterToday(){ return rotina.waterLog[todayStr()]||0; }
+function addWater(ml){ rotina.waterLog[todayStr()]=Math.min(rotina.waterGoal*2, waterToday()+ml); scheduleSave(); renderAll(); }
+function setWaterGoal(v){ rotina.waterGoal=v; scheduleSave(); renderAll(); }
+function waterLast7(){
+  const arr=[];
+  for(let i=6;i>=0;i--){ const d=addDays(new Date(),-i); arr.push({label:i===0?"Hoje":DOW_SHORT[d.getDay()], ml: rotina.waterLog[dateStr(d)]||0}); }
+  return arr;
+}
+function waterWeeks(n){
+  const res=[]; const today=new Date();
+  for(let w=n-1; w>=0; w--){
+    let met=0;
+    for(let i=0;i<7;i++){ const d=addDays(today,-(w*7+i)); if((rotina.waterLog[dateStr(d)]||0)>=rotina.waterGoal) met++; }
+    res.push({label:"Sem "+(n-w), pct:Math.round(met/7*100)});
+  }
+  return res;
+}
+function waterMonths(n){
+  const res=[]; const today=new Date();
+  for(let m=n-1;m>=0;m--){
+    const ref=new Date(today.getFullYear(), today.getMonth()-m, 1);
+    const y=ref.getFullYear(), mo=ref.getMonth();
+    const daysInMonth=new Date(y,mo+1,0).getDate();
+    let met=0, counted=0;
+    for(let day=1; day<=daysInMonth; day++){
+      const d=new Date(y,mo,day); if(d>today) continue;
+      counted++; if((rotina.waterLog[dateStr(d)]||0)>=rotina.waterGoal) met++;
+    }
+    const lbl=ref.toLocaleDateString("pt-BR",{month:"short"}).replace(".","");
+    res.push({label:lbl.charAt(0).toUpperCase()+lbl.slice(1), pct: counted?Math.round(met/counted*100):0});
+  }
+  return res;
+}
+
+// ───────── ROTINA: METAS ─────────
+function addRotinaGoal(name){ rotina.goals.push({id:nid("rg"), name, current:0, target:4}); scheduleSave(); renderAll(); }
+function deleteRotinaGoal(id){ rotina.goals=rotina.goals.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
+function bumpRotinaGoal(id,delta){ const g=rotina.goals.find(x=>x.id===id); if(g) g.current=Math.max(0,g.current+delta); scheduleSave(); renderAll(); }
+function editRotinaGoalTarget(id){
+  const g=rotina.goals.find(x=>x.id===id); if(!g) return;
+  const v=prompt("Meta (número alvo):", g.target); if(v&&!isNaN(v)){ g.target=Number(v); scheduleSave(); renderAll(); }
+}
+
+// ───────── ROTINA: RESUMO/CALENDÁRIO ─────────
+function dayHabitPct(ds){
+  if(!rotina.habits.length) return null;
+  const done=rotina.habits.filter(h=>h.log&&h.log[ds]).length;
+  return Math.round(done/rotina.habits.length*100);
+}
+function currentWeekDates(){
+  const today=new Date(); const sunday=addDays(today,-today.getDay());
+  return Array.from({length:7},(_,i)=>addDays(sunday,i));
+}
+
+// ───────── ROTINA: CRONÔMETRO (estado só de UI, não persiste) ─────────
+let swSeconds=0, swRunning=false, swInterval=null;
+function fmtSwTime(s){ const m=String(Math.floor(s/60)).padStart(2,"0"), sec=String(s%60).padStart(2,"0"); return m+":"+sec; }
+
+// ───────── ROTINA: RENDER ─────────
+let agendaViewMode="tomorrow";
+let routineTabActive="treino";
+let waterHistScale="days";
+function renderRotina(c){
+  const now=new Date();
+  const tToday=tasksToday(), aToday=autoTasksToday();
+  const doneCount=tToday.filter(t=>t.done&&t.done[todayStr()]).length + aToday.filter(a=>rotina.autoTaskDone[todayStr()+"|"+a.kind+"|"+a.id]).length;
+  const totalCount=tToday.length+aToday.length;
+  const next=nextAgendaItem();
+  const streakChips=rotina.habits.map(h=>`<span class="streak-chip">${esc(h.emoji)} ${esc(h.name.split(" ").slice(0,2).join(" "))} 🔥${habitStreak(h)}</span>`).join("");
+
+  c.innerHTML = `
+    <section style="background:var(--ink);color:var(--onInk);border-radius:20px;padding:22px 24px;margin-bottom:18px">
+      <p style="margin:0;font-size:12px;opacity:.75;text-transform:uppercase;letter-spacing:1px">Hoje · ${DOW_FULL[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}</p>
+      <div class="kpi-grid" style="margin-top:14px">
+        <div class="kpi"><div class="kpi-lbl">Tarefas do dia</div><div class="kpi-val">${doneCount}/${totalCount}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Água hoje</div><div class="kpi-val">${waterToday()}/${rotina.waterGoal}ml</div></div>
+        <div class="kpi"><div class="kpi-lbl">Próximo compromisso</div><div class="kpi-val" style="font-size:15px">${next?esc(next.time+" "+next.title):"Nada marcado"}</div></div>
+      </div>
+      ${rotina.habits.length?`<p class="kpi-lbl" style="margin-top:16px;margin-bottom:8px">Sequência de cada hábito</p><div class="streak-chips">${streakChips}</div>`:""}
+    </section>
+
+    <div class="grid2">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+          <p class="card-title" style="margin:0">Tarefas de hoje</p>
+          <button class="ghost-row-btn" id="rtMarkAll">Marcar tudo</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">As com etiqueta 🏋️/📚 vêm da sua Rotina de treino/estudo.</p>
+        <div id="rtTaskList"></div>
+        <div class="add-row">
+          <input type="text" id="rtTaskInp" placeholder="Nova tarefa">
+          <input type="text" id="rtTaskTime" placeholder="hh:mm" style="max-width:70px">
+          <select id="rtTaskRepeat"><option value="">Não repete</option><option value="week">Repete toda semana</option></select>
+          <button id="rtTaskAdd">＋ Adicionar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">Hábitos recorrentes</p>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">🔥 = sequência atual. Bolinhas = últimos 7 dias.</p>
+        <div id="rtHabitList"></div>
+        <div class="add-row">
+          <input type="text" id="rtHabitInp" placeholder="Novo hábito">
+          <button id="rtHabitAdd">＋ Adicionar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <p class="card-title">Agenda</p>
+        <div class="segmented" id="rtAgendaSeg">
+          <button class="${agendaViewMode==="tomorrow"?"active":""}" data-mode="tomorrow">Próximo dia</button>
+          <button class="${agendaViewMode==="week"?"active":""}" data-mode="week">Semana inteira</button>
+        </div>
+        <div id="rtAgendaList"></div>
+        <div class="add-row">
+          <input type="text" id="rtAgendaInp" placeholder="Novo compromisso">
+          <button id="rtAgendaAdd">＋ Adicionar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">Água do dia</p>
+        <div class="ring-wrap">
+          <div class="ring">
+            <svg width="104" height="104" viewBox="0 0 104 104">
+              <circle cx="52" cy="52" r="44" fill="none" stroke="var(--line)" stroke-width="8"/>
+              <circle id="rtWaterArc" cx="52" cy="52" r="44" fill="none" stroke="var(--positive)" stroke-width="8" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
+            </svg>
+            <div class="ring-label"><b id="rtWaterPct"></b><span>da meta</span></div>
+          </div>
+          <div style="flex:1;min-width:170px">
+            <p style="margin:0 0 8px;font-size:13px"><strong id="rtWaterMl"></strong> ml de <span id="rtWaterGoalTxt"></span> ml</p>
+            <div class="quick-add">
+              <button data-add="100">+100</button><button data-add="200">+200</button><button data-add="300">+300</button>
+              <button data-add="400">+400</button><button data-add="500">+500</button>
+              <button class="other" id="rtWaterOther">Outro…</button>
+            </div>
+            <div class="goal-row">Meta diária: <span id="rtWaterGoalTxt2"></span> <button id="rtWaterGoalEdit">editar</button></div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:14px 0 4px">Histórico:</p>
+        <div class="segmented" id="rtWaterHistSeg">
+          <button class="${waterHistScale==="days"?"active":""}" data-scale="days">Últimos 7 dias</button>
+          <button class="${waterHistScale==="weeks"?"active":""}" data-scale="weeks">Últimas semanas</button>
+          <button class="${waterHistScale==="months"?"active":""}" data-scale="months">Últimos meses</button>
+        </div>
+        <div class="water-hist" id="rtWaterHist"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <p class="card-title">Rotina de treino e estudo</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">O que você cadastrar aqui aparece sozinho em "Tarefas de hoje" no dia certo.</p>
+      <div class="subtab-row">
+        <button class="subtab ${routineTabActive==="treino"?"active":""}" data-rt="treino">🏋️ Treino</button>
+        <button class="subtab ${routineTabActive==="estudo"?"active":""}" data-rt="estudo">📚 Estudo</button>
+      </div>
+      <div id="rtRoutineList"></div>
+      <div class="add-row">
+        <select id="rtRoutineDay">${DOW_FULL.map((d,i)=>`<option value="${i}">${d}</option>`).join("")}</select>
+        <input type="text" id="rtRoutineTime" placeholder="hh:mm" style="max-width:70px">
+        <input type="text" id="rtRoutineInp" placeholder="Ex: Peito e tríceps">
+        <button id="rtRoutineAdd">＋ Adicionar</button>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <p class="card-title">Metas</p>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Igual às Metas de Patrimônio em Finanças — pra treino, estudo, água ou qualquer coisa.</p>
+        <div id="rtGoalList"></div>
+        <div class="add-row">
+          <input type="text" id="rtGoalInp" placeholder="Ex: Treinar 4x por semana">
+          <button id="rtGoalAdd">＋ Nova meta</button>
+        </div>
+      </div>
+      <div class="card">
+        <p class="card-title">Resumo da semana</p>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">% de hábitos cumpridos por dia, essa semana.</p>
+        <div class="week-bars" id="rtWeekBars"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <p class="card-title">Mini calendário — ${MONTHS[now.getMonth()]}</p>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Cor = % de hábitos cumpridos naquele dia.</p>
+        <div class="cal-grid" id="rtCalGrid"></div>
+      </div>
+      <div class="card">
+        <p class="card-title">Cronômetro</p>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Só cronometra — não grava histórico automaticamente.</p>
+        <div class="stopwatch">
+          <input type="text" class="sw-label-inp" id="rtSwLabel" placeholder="O que você está fazendo agora? (opcional)">
+          <div class="sw-time" id="rtSwTime">${fmtSwTime(swSeconds)}</div>
+          <div class="sw-controls">
+            <button class="sw-btn ${swRunning?"pause":"start"}" id="rtSwToggle">${swRunning?"Pausar":"Iniciar"}</button>
+            <button class="sw-btn reset" id="rtSwReset">Zerar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  wireRotina(c);
+}
+
+function wireRotina(c){
+  const wide=wrapNames;
+  const tToday=tasksToday(), aToday=autoTasksToday();
+
+  // Tarefas
+  const taskListEl=document.getElementById("rtTaskList");
+  let html = tToday.map(t=>{
+    const done = !!(t.done&&t.done[todayStr()]);
+    return `<div class="task-row">
+      <div class="task-left ${wide?"stack-full":""}">
+        <button class="chk ${done?"on":""}" data-tt="${t.id}">${done?"✓":""}</button>
+        <input class="row-input ${wide?"wide":""} ${done?"done-text":""}" data-trn="${t.id}" value="${esc(t.name)}">
+      </div>
+      ${t.repeatWeekly?`<span class="src-badge repeat">🔁 semanal</span>`:""}
+      <input class="time-input" data-ttime="${t.id}" value="${esc(t.time)}">
+      <button class="icon-btn del" data-tdel="${t.id}">🗑</button>
+    </div>`;
+  }).join("");
+  html += aToday.map(a=>{
+    const key=todayStr()+"|"+a.kind+"|"+a.id;
+    const done=!!rotina.autoTaskDone[key];
+    return `<div class="task-row">
+      <div class="task-left ${wide?"stack-full":""}">
+        <button class="chk ${done?"on":""}" data-tauto="${a.kind}|${a.id}">${done?"✓":""}</button>
+        <span class="row-input ${wide?"wide":""} ${done?"done-text":""}" style="padding:2px 0">${esc(a.text)}</span>
+      </div>
+      <span class="src-badge ${a.kind}">${a.label} rotina</span>
+      <span class="time-input">${esc(a.time)}</span>
+    </div>`;
+  }).join("");
+  taskListEl.innerHTML = html || `<p class="empty-hint">Nada por aqui hoje.</p>`;
+  taskListEl.querySelectorAll("[data-tt]").forEach(b=>b.onclick=()=>toggleTaskDone(b.dataset.tt));
+  taskListEl.querySelectorAll("[data-tauto]").forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.tauto.split("|"); toggleAutoDone(k,id); });
+  taskListEl.querySelectorAll("[data-trn]").forEach(i=>i.onchange=()=>renameTask(i.dataset.trn,i.value));
+  taskListEl.querySelectorAll("[data-ttime]").forEach(i=>i.onchange=()=>retimeTask(i.dataset.ttime,i.value));
+  taskListEl.querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>deleteTask(b.dataset.tdel));
+  document.getElementById("rtTaskAdd").onclick=()=>{
+    const inp=document.getElementById("rtTaskInp"), timeInp=document.getElementById("rtTaskTime"), rep=document.getElementById("rtTaskRepeat");
+    if(inp.value.trim()){ addTask(inp.value.trim(), timeInp.value, rep.value==="week"); inp.value=""; timeInp.value=""; rep.value=""; }
+  };
+  document.getElementById("rtMarkAll").onclick=markAllToday;
+
+  // Hábitos
+  const habitListEl=document.getElementById("rtHabitList");
+  habitListEl.innerHTML = rotina.habits.length? rotina.habits.map(h=>`
+    <div class="habit-row">
+      <div class="habit-left ${wide?"stack-full":""}">
+        <span class="habit-emoji">${esc(h.emoji)}</span>
+        <input class="row-input ${wide?"wide":""}" data-hrn="${h.id}" value="${esc(h.name)}" style="font-weight:500">
+        <span class="habit-streak">🔥${habitStreak(h)}</span>
+      </div>
+      <div class="dots">${habitLast7(h).map((d,di)=>`<button class="dot ${d.on?"on":""} ${di===6?"today":""}" data-hdot="${h.id}|${d.ds}"></button>`).join("")}</div>
+      <button class="icon-btn del" data-hdel="${h.id}">🗑</button>
+    </div>`).join("") : `<p class="empty-hint">Nenhum hábito ainda.</p>`;
+  habitListEl.querySelectorAll("[data-hdot]").forEach(b=>b.onclick=()=>{ const [id,ds]=b.dataset.hdot.split("|"); toggleHabitDay(id,ds); });
+  habitListEl.querySelectorAll("[data-hrn]").forEach(i=>i.onchange=()=>renameHabit(i.dataset.hrn,i.value));
+  habitListEl.querySelectorAll("[data-hdel]").forEach(b=>b.onclick=()=>deleteHabit(b.dataset.hdel));
+  document.getElementById("rtHabitAdd").onclick=()=>{
+    const inp=document.getElementById("rtHabitInp");
+    if(inp.value.trim()){ addHabit(inp.value.trim()); inp.value=""; }
+  };
+
+  // Agenda
+  document.querySelectorAll("#rtAgendaSeg button").forEach(b=>b.onclick=()=>{ agendaViewMode=b.dataset.mode; renderRotina(c); });
+  const agendaListEl=document.getElementById("rtAgendaList");
+  if(agendaViewMode==="tomorrow"){
+    const d=addDays(new Date(),1), ds=dateStr(d);
+    const items=rotina.agenda.filter(a=>a.date===ds).sort((a,b)=>a.time.localeCompare(b.time));
+    agendaListEl.innerHTML = items.length? items.map(a=>`
+      <div class="agenda-item"><span class="agenda-time">${esc(a.time)}</span><div style="flex:1"><div class="agenda-title">${esc(a.title)}</div><div class="agenda-tag">${esc(a.tag)}</div></div><button class="icon-btn del" data-adel="${a.id}">🗑</button></div>`).join("")
+      : `<p class="empty-hint">Nada marcado para amanhã (${DOW_FULL[d.getDay()]}).</p>`;
+  } else {
+    agendaListEl.innerHTML = agendaNext7Days().map(day=>`
+      <div class="agenda-day-hd">${day.label}</div>
+      ${day.items.length? day.items.map(a=>`<div class="agenda-item"><span class="agenda-time">${esc(a.time)}</span><div style="flex:1"><div class="agenda-title">${esc(a.title)}</div><div class="agenda-tag">${esc(a.tag)}</div></div><button class="icon-btn del" data-adel="${a.id}">🗑</button></div>`).join("") : `<p class="empty-hint">Nada marcado.</p>`}
+    `).join("");
+  }
+  agendaListEl.querySelectorAll("[data-adel]").forEach(b=>b.onclick=()=>deleteAgendaItem(b.dataset.adel));
+  document.getElementById("rtAgendaAdd").onclick=()=>{
+    const inp=document.getElementById("rtAgendaInp");
+    if(inp.value.trim()){ addAgendaItem(inp.value.trim(), agendaViewMode==="tomorrow"); inp.value=""; }
+  };
+
+  // Água
+  const circumference=276.5;
+  const pct=Math.min(100, Math.round(waterToday()/rotina.waterGoal*100));
+  document.getElementById("rtWaterMl").textContent=waterToday();
+  document.getElementById("rtWaterGoalTxt").textContent=rotina.waterGoal;
+  document.getElementById("rtWaterGoalTxt2").textContent=rotina.waterGoal+"ml";
+  document.getElementById("rtWaterPct").textContent=pct+"%";
+  document.getElementById("rtWaterArc").setAttribute("stroke-dashoffset", circumference-(circumference*pct/100));
+  document.querySelectorAll(".quick-add [data-add]").forEach(b=>b.onclick=()=>addWater(Number(b.dataset.add)));
+  document.getElementById("rtWaterOther").onclick=()=>{ const v=prompt("Quantos ml?"); if(v&&!isNaN(v)) addWater(Number(v)); };
+  document.getElementById("rtWaterGoalEdit").onclick=()=>{ const v=prompt("Nova meta diária (ml):", rotina.waterGoal); if(v&&!isNaN(v)) setWaterGoal(Number(v)); };
+  function markClass(p){ return p>=100?"ok":p>=70?"warn":"no"; }
+  document.querySelectorAll("#rtWaterHistSeg button").forEach(b=>b.onclick=()=>{ waterHistScale=b.dataset.scale; renderRotina(c); });
+  const whEl=document.getElementById("rtWaterHist");
+  if(waterHistScale==="days"){
+    whEl.innerHTML = waterLast7().map(h=>{ const p=Math.round(h.ml/rotina.waterGoal*100); return `<div class="wh-item"><div class="wh-day">${h.label}</div><div class="wh-mark ${markClass(p)}">${p>=100?"✓":p+"%"}</div></div>`; }).join("");
+  } else {
+    const wdata = waterHistScale==="weeks" ? waterWeeks(6) : waterMonths(6);
+    whEl.innerHTML = wdata.map(d=>`<div class="wh-item"><div class="wh-day">${d.label}</div><div class="wh-mark ${markClass(d.pct)}">${d.pct}%</div></div>`).join("");
+  }
+
+  // Rotina de treino/estudo
+  document.querySelectorAll(".subtab").forEach(b=>b.onclick=()=>{ routineTabActive=b.dataset.rt; renderRotina(c); });
+  const routineListEl=document.getElementById("rtRoutineList");
+  const items = routineTabActive==="treino" ? rotina.routineTreino : rotina.routineEstudo;
+  const sorted=[...items].sort((a,b)=> a.weekday-b.weekday || a.time.localeCompare(b.time));
+  routineListEl.innerHTML = sorted.length? sorted.map(r=>`
+    <div class="routine-row">
+      <span class="routine-day">${DOW_SHORT[r.weekday]}</span>
+      <span class="time-input" style="width:44px">${esc(r.time)}</span>
+      <input class="routine-input ${wide?"wide":""}" data-rtxt="${routineTabActive}|${r.id}" value="${esc(r.text)}">
+      <button class="icon-btn del" data-rdel="${routineTabActive}|${r.id}">🗑</button>
+    </div>`).join("") : `<p class="empty-hint">Nada na rotina de ${routineTabActive} ainda.</p>`;
+  routineListEl.querySelectorAll("[data-rtxt]").forEach(i=>i.onchange=()=>{ const [k,id]=i.dataset.rtxt.split("|"); editRoutineItem(k,id,i.value); });
+  routineListEl.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.rdel.split("|"); deleteRoutineItem(k,id); });
+  document.getElementById("rtRoutineAdd").onclick=()=>{
+    const day=document.getElementById("rtRoutineDay").value, time=document.getElementById("rtRoutineTime").value, inp=document.getElementById("rtRoutineInp");
+    if(inp.value.trim()){ addRoutineItem(routineTabActive, day, time, inp.value.trim()); inp.value=""; document.getElementById("rtRoutineTime").value=""; }
+  };
+
+  // Metas
+  const goalListEl=document.getElementById("rtGoalList");
+  goalListEl.innerHTML = rotina.goals.length? rotina.goals.map(g=>{
+    const p=Math.min(100,Math.round(g.current/g.target*100));
+    return `<div class="goal-item">
+      <div class="goal-item-hd"><span>${esc(g.name)}</span><button class="icon-btn del" data-gdel="${g.id}">🗑</button></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${p}%"></div></div>
+      <div class="goal-sub"><button class="icon-btn" data-gminus="${g.id}" style="padding:0 4px">−</button> ${g.current} de <button class="icon-btn" data-gtarget="${g.id}" style="padding:0;text-decoration:underline;color:var(--muted)">${g.target}</button> <button class="icon-btn" data-gplus="${g.id}" style="padding:0 4px">＋</button> (${p}%)</div>
+    </div>`;
+  }).join("") : `<p class="empty-hint">Nenhuma meta ainda.</p>`;
+  goalListEl.querySelectorAll("[data-gdel]").forEach(b=>b.onclick=()=>deleteRotinaGoal(b.dataset.gdel));
+  goalListEl.querySelectorAll("[data-gplus]").forEach(b=>b.onclick=()=>bumpRotinaGoal(b.dataset.gplus,1));
+  goalListEl.querySelectorAll("[data-gminus]").forEach(b=>b.onclick=()=>bumpRotinaGoal(b.dataset.gminus,-1));
+  goalListEl.querySelectorAll("[data-gtarget]").forEach(b=>b.onclick=()=>editRotinaGoalTarget(b.dataset.gtarget));
+  document.getElementById("rtGoalAdd").onclick=()=>{
+    const inp=document.getElementById("rtGoalInp");
+    if(inp.value.trim()){ addRotinaGoal(inp.value.trim()); inp.value=""; }
+  };
+
+  // Resumo da semana
+  const weekDates=currentWeekDates();
+  const pcts=weekDates.map(d=>dayHabitPct(dateStr(d))||0);
+  document.getElementById("rtWeekBars").innerHTML = pcts.map((p,i)=>`
+    <div class="week-bar-col"><div class="week-bar" style="height:${Math.max(p,3)}%"></div><div class="week-bar-lbl">${DOW_SHORT[i]}</div></div>`).join("");
+
+  // Mini calendário
+  const now=new Date();
+  const y=now.getFullYear(), mo=now.getMonth();
+  const daysInMonth=new Date(y,mo+1,0).getDate();
+  const startOffset=new Date(y,mo,1).getDay();
+  let calHtml = DOW_SHORT.map(d=>`<div class="cal-dow">${d}</div>`).join("");
+  for(let i=0;i<startOffset;i++) calHtml += `<div></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const ds=dateStr(new Date(y,mo,d));
+    const pctc=dayHabitPct(ds);
+    const color = pctc===null? "var(--line)" : pctc>=80?"var(--positive)":pctc>=40?"var(--accent2)":pctc>0?"var(--negative)":"var(--line)";
+    calHtml += `<div class="cal-day ${d===now.getDate()?"today":""}">${d}<span class="cal-dot" style="background:${color}"></span></div>`;
+  }
+  document.getElementById("rtCalGrid").innerHTML = calHtml;
+
+  // Cronômetro
+  document.getElementById("rtSwToggle").onclick = e=>{
+    swRunning=!swRunning;
+    if(swRunning){ swInterval=setInterval(()=>{ swSeconds++; const t=document.getElementById("rtSwTime"); if(t) t.textContent=fmtSwTime(swSeconds); },1000); }
+    else clearInterval(swInterval);
+    e.target.textContent = swRunning?"Pausar":"Iniciar";
+    e.target.className = "sw-btn "+(swRunning?"pause":"start");
+  };
+  document.getElementById("rtSwReset").onclick = ()=>{
+    swRunning=false; clearInterval(swInterval); swSeconds=0;
+    document.getElementById("rtSwTime").textContent="00:00";
+    const btn=document.getElementById("rtSwToggle"); btn.textContent="Iniciar"; btn.className="sw-btn start";
+  };
+}
+
 // ───────── RENDER: DISPATCH ─────────
 function renderAll(){
   if(!loaded) return;
   const content=document.getElementById("content");
+  if(appSection==="rotina"){ renderRotina(content); return; }
   if(tab==="dashboard") renderDashboard(content);
   else if(tab==="faturamento") renderFaturamento(content);
   else if(tab==="despesas") renderDespesas(content);
