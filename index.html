@@ -7,7 +7,11 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#141B23">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Log Pose">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <style>
@@ -168,6 +172,7 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .subtab-row{display:flex;gap:6px;margin-bottom:12px;}
 .subtab{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font-size:12px;color:var(--muted);cursor:pointer;}
 .subtab.active{background:var(--positive);color:#fff;border-color:var(--positive);}
+.area-pills{display:flex;gap:6px;flex-wrap:wrap;}
 .ring-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
 .ring{position:relative;width:104px;height:104px;flex-shrink:0;}
 .ring svg{transform:rotate(-90deg);}
@@ -436,7 +441,30 @@ let watchedData={}, watchedUnsubs={};
 const emailDocId = email => String(email||"").trim().toLowerCase();
 // ── Rotina (hábitos, tarefas, agenda, água, treino/estudo) ──
 let appSection="rotina"; // "rotina" | "financas"
-function defaultRotina(){ return {tasks:[],habits:[],agenda:[],routineTreino:[],routineEstudo:[],waterLog:{},waterGoal:2950,goals:[],autoTaskDone:{}}; }
+function defaultRotina(){ return {tasks:[],habits:[],agenda:[],areas:[],routineItems:[],waterLog:{},waterGoal:2950,goals:[],autoTaskDone:{}}; }
+const ROTINA_AREA_COLORS = ["#1F7A5C","#B8963E","#3D5A80","#9C6ADE","#C1443D","#4C7A5B","#2F6FEB","#C1673F"];
+function migrateRotinaAreas(){
+  if(rotina.areas && rotina.areas.length) return;
+  const treinoId=nid("area"), estudoId=nid("area");
+  rotina.areas=[{id:treinoId,emoji:"🏋️",name:"Treino",color:ROTINA_AREA_COLORS[0]},{id:estudoId,emoji:"📚",name:"Estudo",color:ROTINA_AREA_COLORS[1]}];
+  rotina.routineItems=[
+    ...(rotina.routineTreino||[]).map(r=>({id:r.id,areaId:treinoId,weekday:r.weekday,time:r.time,end:"",text:r.text,note:"",from:"",to:""})),
+    ...(rotina.routineEstudo||[]).map(r=>({id:r.id,areaId:estudoId,weekday:r.weekday,time:r.time,end:"",text:r.text,note:"",from:"",to:""})),
+  ];
+  if(rotina.autoTaskDone){
+    const migrated={};
+    Object.entries(rotina.autoTaskDone).forEach(([k,v])=>{
+      const parts=k.split("|");
+      if(parts.length===3){
+        const [date,kind,id]=parts;
+        const newKind = kind==="treino"?treinoId:kind==="estudo"?estudoId:kind;
+        migrated[date+"|"+newKind+"|"+id]=v;
+      } else migrated[k]=v;
+    });
+    rotina.autoTaskDone=migrated;
+  }
+  delete rotina.routineTreino; delete rotina.routineEstudo;
+}
 let rotina=defaultRotina();
 
 function syncChartColors(){
@@ -556,12 +584,13 @@ function startDataListener(uid){
       wrapNames=d.wrapNames||false;
       appSection=d.appSection||"rotina";
       rotina={...defaultRotina(), ...(d.rotina||{})};
+      migrateRotinaAreas();
     } else {
       years={[REAL_YEAR]:blankYear()}; year=REAL_YEAR; monthSel=REAL_MONTH;
       colors={...PRESETS[0].colors}; groups=DEFAULT_CATS.map(g=>({...g})); chartColors=DEFAULT_CHART_COLORS.slice(); chartStyle="bar";
       budgets={}; goals=[]; sharedWith=[]; watching=[];
       openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
-      appSection="rotina"; rotina=defaultRotina();
+      appSection="rotina"; rotina=defaultRotina(); migrateRotinaAreas();
       await setDoc(doc(db,"users",uid),{name:user.displayName||user.email.split("@")[0],email:user.email,createdAt:serverTimestamp()},{merge:true});
       await setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,sharedWith,sharedWithUids:[],watching,appSection,rotina});
     }
@@ -1315,15 +1344,16 @@ function toggleTaskDone(id){
   if(t.done[ds]) delete t.done[ds]; else t.done[ds]=true;
   scheduleSave(); renderAll();
 }
+function itemValidToday(r,ds){ return (!r.from||ds>=r.from) && (!r.to||ds<=r.to); }
 function autoTasksToday(){
-  const wd=new Date().getDay();
-  const list=[];
-  rotina.routineTreino.filter(r=>r.weekday===wd).forEach(r=>list.push({...r,kind:"treino",label:"🏋️"}));
-  rotina.routineEstudo.filter(r=>r.weekday===wd).forEach(r=>list.push({...r,kind:"estudo",label:"📚"}));
-  return list.sort((a,b)=>a.time.localeCompare(b.time));
+  const wd=new Date().getDay(), ds=todayStr();
+  return rotina.routineItems.filter(r=>r.weekday===wd && itemValidToday(r,ds)).map(r=>{
+    const a=rotina.areas.find(x=>x.id===r.areaId)||{emoji:"⭐",name:"Área",color:"#888"};
+    return {id:r.id, areaId:r.areaId, text:r.text, time:r.time, end:r.end, note:r.note, emoji:a.emoji, areaName:a.name, color:a.color};
+  }).sort((a,b)=>a.time.localeCompare(b.time));
 }
-function toggleAutoDone(kind,id,text,time){
-  const key=todayStr()+"|"+kind+"|"+id;
+function toggleAutoDone(areaId,id,text,time){
+  const key=todayStr()+"|"+areaId+"|"+id;
   if(rotina.autoTaskDone[key]) delete rotina.autoTaskDone[key];
   else rotina.autoTaskDone[key]={date:todayStr(),text:text||"",time:time||""};
   scheduleSave(); renderAll();
@@ -1331,37 +1361,37 @@ function toggleAutoDone(kind,id,text,time){
 function markAllToday(){
   const ds=todayStr();
   tasksToday().forEach(t=>{ t.done=t.done||{}; t.done[ds]=true; });
-  autoTasksToday().forEach(a=>{ rotina.autoTaskDone[ds+"|"+a.kind+"|"+a.id]={date:ds,text:a.text,time:a.time}; });
+  autoTasksToday().forEach(a=>{ rotina.autoTaskDone[ds+"|"+a.areaId+"|"+a.id]={date:ds,text:a.text,time:a.time}; });
   scheduleSave(); renderAll();
 }
-// ───────── ROTINA: HISTÓRICO DE TREINO/ESTUDO ─────────
-function routineDaysHist(kind){
+// ───────── ROTINA: HISTÓRICO POR ÁREA ─────────
+function routineDaysHist(areaId){
   const arr=[];
   for(let i=6;i>=0;i--){
     const d=addDays(new Date(),-i), ds=dateStr(d), wd=d.getDay();
-    const scheduled=(kind==="treino"?rotina.routineTreino:rotina.routineEstudo).filter(r=>r.weekday===wd);
-    const doneCount=scheduled.filter(r=>rotina.autoTaskDone[ds+"|"+kind+"|"+r.id]).length;
+    const scheduled=rotina.routineItems.filter(r=>r.areaId===areaId && r.weekday===wd && itemValidToday(r,ds));
+    const doneCount=scheduled.filter(r=>rotina.autoTaskDone[ds+"|"+areaId+"|"+r.id]).length;
     const pct = scheduled.length? Math.round(doneCount/scheduled.length*100) : null;
     arr.push({label:i===0?"Hoje":DOW_SHORT[wd], pct});
   }
   return arr;
 }
-function routineWeeksHist(kind,n){
+function routineWeeksHist(areaId,n){
   const res=[]; const today=new Date();
   for(let w=n-1; w>=0; w--){
     let scheduledDays=0, doneDays=0;
     for(let i=0;i<7;i++){
       const d=addDays(today,-(w*7+i)), ds=dateStr(d), wd=d.getDay();
-      const scheduled=(kind==="treino"?rotina.routineTreino:rotina.routineEstudo).filter(r=>r.weekday===wd);
+      const scheduled=rotina.routineItems.filter(r=>r.areaId===areaId && r.weekday===wd && itemValidToday(r,ds));
       if(!scheduled.length) continue;
       scheduledDays++;
-      if(scheduled.every(r=>rotina.autoTaskDone[ds+"|"+kind+"|"+r.id])) doneDays++;
+      if(scheduled.every(r=>rotina.autoTaskDone[ds+"|"+areaId+"|"+r.id])) doneDays++;
     }
     res.push({label:"Sem "+(n-w), pct: scheduledDays? Math.round(doneDays/scheduledDays*100) : null});
   }
   return res;
 }
-function routineMonthsHist(kind,n){
+function routineMonthsHist(areaId,n){
   const res=[]; const today=new Date();
   for(let m=n-1;m>=0;m--){
     const ref=new Date(today.getFullYear(), today.getMonth()-m, 1);
@@ -1371,19 +1401,19 @@ function routineMonthsHist(kind,n){
     for(let day=1; day<=daysInMonth; day++){
       const d=new Date(y,mo,day); if(d>today) continue;
       const ds=dateStr(d), wd=d.getDay();
-      const scheduled=(kind==="treino"?rotina.routineTreino:rotina.routineEstudo).filter(r=>r.weekday===wd);
+      const scheduled=rotina.routineItems.filter(r=>r.areaId===areaId && r.weekday===wd && itemValidToday(r,ds));
       if(!scheduled.length) continue;
       scheduledDays++;
-      if(scheduled.every(r=>rotina.autoTaskDone[ds+"|"+kind+"|"+r.id])) doneDays++;
+      if(scheduled.every(r=>rotina.autoTaskDone[ds+"|"+areaId+"|"+r.id])) doneDays++;
     }
     const lbl=ref.toLocaleDateString("pt-BR",{month:"short"}).replace(".","");
     res.push({label:lbl.charAt(0).toUpperCase()+lbl.slice(1), pct: scheduledDays? Math.round(doneDays/scheduledDays*100) : null});
   }
   return res;
 }
-function routineLog(kind,limit){
+function routineLog(areaId,limit){
   return Object.entries(rotina.autoTaskDone)
-    .filter(([k])=>k.split("|")[1]===kind)
+    .filter(([k])=>k.split("|")[1]===areaId)
     .map(([,v])=>v)
     .filter(v=>v&&v.date)
     .sort((a,b)=>b.date.localeCompare(a.date))
@@ -1408,22 +1438,30 @@ function nextAgendaItem(){
   return upcoming[0]||null;
 }
 
-// ───────── ROTINA: TREINO/ESTUDO ─────────
-function addRoutineItem(kind,weekday,time,text){
-  const arr = kind==="treino"?rotina.routineTreino:rotina.routineEstudo;
-  arr.push({id:nid("rt"), weekday:Number(weekday), time:time||"--:--", text});
+// ───────── ROTINA: ÁREAS DA VIDA PESSOAL ─────────
+function addArea(emoji,name){
+  const id=nid("area");
+  rotina.areas.push({id, emoji:emoji||"⭐", name, color:ROTINA_AREA_COLORS[rotina.areas.length%ROTINA_AREA_COLORS.length]});
+  scheduleSave(); renderAll();
+  return id;
+}
+function renameArea(id,name){ const a=rotina.areas.find(x=>x.id===id); if(a) a.name=name.trim()||a.name; scheduleSave(); renderAll(); }
+function setAreaEmoji(id,emoji){ const a=rotina.areas.find(x=>x.id===id); if(a) a.emoji=emoji; scheduleSave(); renderAll(); }
+function setAreaColor(id,color){ const a=rotina.areas.find(x=>x.id===id); if(a) a.color=color; scheduleSave(); renderAll(); }
+function deleteArea(id){
+  if(rotina.areas.length<=1){ alert("Mantenha ao menos uma área."); return; }
+  const a=rotina.areas.find(x=>x.id===id); if(!a) return;
+  if(!confirm(`Excluir a área "${a.name}"? Os itens dela também somem.`)) return;
+  rotina.areas=rotina.areas.filter(x=>x.id!==id);
+  rotina.routineItems=rotina.routineItems.filter(x=>x.areaId!==id);
   scheduleSave(); renderAll();
 }
-function editRoutineItem(kind,id,text){
-  const arr = kind==="treino"?rotina.routineTreino:rotina.routineEstudo;
-  const it=arr.find(x=>x.id===id); if(it) it.text=text;
-  scheduleSave();
-}
-function deleteRoutineItem(kind,id){
-  if(kind==="treino") rotina.routineTreino=rotina.routineTreino.filter(x=>x.id!==id);
-  else rotina.routineEstudo=rotina.routineEstudo.filter(x=>x.id!==id);
+function addRoutineItem(areaId,weekday,time,end,text,note,from,to){
+  rotina.routineItems.push({id:nid("ritem"), areaId, weekday:Number(weekday), time:time||"--:--", end:end||"", text, note:note||"", from:from||"", to:to||""});
   scheduleSave(); renderAll();
 }
+function editRoutineItem(id,field,val){ const it=rotina.routineItems.find(x=>x.id===id); if(it) it[field]=val; scheduleSave(); }
+function deleteRoutineItem(id){ rotina.routineItems=rotina.routineItems.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
 
 // ───────── ROTINA: ÁGUA ─────────
 function waterToday(){ return rotina.waterLog[todayStr()]||0; }
@@ -1492,13 +1530,13 @@ function fmtSwTime(s){ const m=String(Math.floor(s/60)).padStart(2,"0"), sec=Str
 
 // ───────── ROTINA: RENDER ─────────
 let agendaViewMode="tomorrow";
-let routineTabActive="treino";
+let activeAreaId=null;
 let waterHistScale="days";
 let routineHistScale="days";
 function renderRotina(c){
   const now=new Date();
   const tToday=tasksToday(), aToday=autoTasksToday();
-  const doneCount=tToday.filter(t=>t.done&&t.done[todayStr()]).length + aToday.filter(a=>rotina.autoTaskDone[todayStr()+"|"+a.kind+"|"+a.id]).length;
+  const doneCount=tToday.filter(t=>t.done&&t.done[todayStr()]).length + aToday.filter(a=>rotina.autoTaskDone[todayStr()+"|"+a.areaId+"|"+a.id]).length;
   const totalCount=tToday.length+aToday.length;
   const next=nextAgendaItem();
   const streakChips=rotina.habits.map(h=>`<span class="streak-chip">${esc(h.emoji)} ${esc(h.name.split(" ").slice(0,2).join(" "))} 🔥${habitStreak(h)}</span>`).join("");
@@ -1520,7 +1558,7 @@ function renderRotina(c){
           <p class="card-title" style="margin:0">Tarefas de hoje</p>
           <button class="ghost-row-btn" id="rtMarkAll">Marcar tudo</button>
         </div>
-        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">As com etiqueta 🏋️/📚 vêm da sua Rotina de treino/estudo.</p>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">As com etiqueta colorida vêm das suas Áreas da vida pessoal.</p>
         <div id="rtTaskList"></div>
         <div class="add-row">
           <input type="text" id="rtTaskInp" placeholder="Nova tarefa">
@@ -1589,28 +1627,48 @@ function renderRotina(c){
     </div>
 
     <div class="card" style="margin-bottom:20px">
-      <p class="card-title">Rotina de treino e estudo</p>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">O que você cadastrar aqui aparece sozinho em "Tarefas de hoje" no dia certo.</p>
-      <div class="subtab-row">
-        <button class="subtab ${routineTabActive==="treino"?"active":""}" data-rt="treino">🏋️ Treino</button>
-        <button class="subtab ${routineTabActive==="estudo"?"active":""}" data-rt="estudo">📚 Estudo</button>
+      <p class="card-title">Áreas da vida pessoal</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Crie quantas áreas fizer sentido — treino, estudo, um curso específico, trabalho... O que você cadastrar aqui aparece sozinho em "Tarefas de hoje".</p>
+      <div class="area-pills" id="rtAreaPills"></div>
+      <div class="add-row" style="margin-top:10px">
+        <input type="text" id="rtAreaIconInp" placeholder="🎓" style="max-width:52px;text-align:center">
+        <input type="text" id="rtAreaNameInp" placeholder="Nova área (ex: MBA)">
+        <button id="rtAreaAddBtn">＋ Nova área</button>
       </div>
-      <div id="rtRoutineList"></div>
-      <div class="add-row">
-        <select id="rtRoutineDay">${DOW_FULL.map((d,i)=>`<option value="${i}">${d}</option>`).join("")}</select>
-        <input type="text" id="rtRoutineTime" placeholder="hh:mm" style="max-width:70px">
-        <input type="text" id="rtRoutineInp" placeholder="Ex: Peito e tríceps">
-        <button id="rtRoutineAdd">＋ Adicionar</button>
+      <div class="icon-suggest" id="rtAreaIconSuggest"></div>
+
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <label class="swatch" style="width:24px;height:24px"><input type="color" id="rtAreaColorInp"></label>
+          <input type="text" id="rtAreaActiveNameInp" class="row-input" style="font-family:var(--serif);font-size:16px;font-weight:600;flex:0 1 220px">
+          <button class="ghost-row-btn" id="rtAreaIconEditBtn">✎ ícone</button>
+          <button class="ghost-row-btn" id="rtAreaDelBtn" style="margin-left:auto;color:var(--negative)">🗑 excluir área</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Dia, início/fim, o que fazer — e, se quiser, local/observação e um período de validade (útil pra um curso com data de início e fim, tipo um semestre de MBA).</p>
+        <div id="rtRoutineList"></div>
+        <div class="add-row">
+          <select id="rtRoutineDay">${DOW_FULL.map((d,i)=>`<option value="${i}">${d}</option>`).join("")}</select>
+          <input type="text" id="rtRoutineStart" placeholder="Início hh:mm" style="max-width:90px">
+          <input type="text" id="rtRoutineEnd" placeholder="Fim hh:mm" style="max-width:90px">
+          <input type="text" id="rtRoutineInp" placeholder="O que fazer">
+          <button id="rtRoutineAdd">＋ Adicionar</button>
+        </div>
+        <div class="add-row">
+          <input type="text" id="rtRoutineNote" placeholder="Local / observação (opcional)">
+          <label style="font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:4px">De <input type="date" id="rtRoutineFrom" style="flex:none;width:130px"></label>
+          <label style="font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:4px">até <input type="date" id="rtRoutineTo" style="flex:none;width:130px"></label>
+        </div>
+
+        <p style="font-size:12px;color:var(--muted);margin:18px 0 4px">Histórico:</p>
+        <div class="segmented" id="rtRoutineHistSeg">
+          <button class="${routineHistScale==="days"?"active":""}" data-scale="days">Últimos 7 dias</button>
+          <button class="${routineHistScale==="weeks"?"active":""}" data-scale="weeks">Últimas semanas</button>
+          <button class="${routineHistScale==="months"?"active":""}" data-scale="months">Últimos meses</button>
+        </div>
+        <div class="water-hist" id="rtRoutineHist"></div>
+        <p style="font-size:11px;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.4px">Últimas sessões</p>
+        <div id="rtRoutineLog"></div>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin:18px 0 4px">Histórico de ${routineTabActive}:</p>
-      <div class="segmented" id="rtRoutineHistSeg">
-        <button class="${routineHistScale==="days"?"active":""}" data-scale="days">Últimos 7 dias</button>
-        <button class="${routineHistScale==="weeks"?"active":""}" data-scale="weeks">Últimas semanas</button>
-        <button class="${routineHistScale==="months"?"active":""}" data-scale="months">Últimos meses</button>
-      </div>
-      <div class="water-hist" id="rtRoutineHist"></div>
-      <p style="font-size:11px;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.4px">Últimas sessões</p>
-      <div id="rtRoutineLog"></div>
     </div>
 
     <div class="grid2">
@@ -1675,20 +1733,20 @@ function wireRotina(c){
     </div>`;
   }).join("");
   html += aToday.map(a=>{
-    const key=todayStr()+"|"+a.kind+"|"+a.id;
+    const key=todayStr()+"|"+a.areaId+"|"+a.id;
     const done=!!rotina.autoTaskDone[key];
     return `<div class="task-row">
       <div class="task-left ${wide?"stack-full":""}">
-        <button class="chk ${done?"on":""}" data-tauto="${a.kind}|${a.id}">${done?"✓":""}</button>
+        <button class="chk ${done?"on":""}" data-tauto="${a.areaId}|${a.id}">${done?"✓":""}</button>
         <span class="row-input ${wide?"wide":""} ${done?"done-text":""}" style="padding:2px 0">${esc(a.text)}</span>
       </div>
-      <span class="src-badge ${a.kind}">${a.label} rotina</span>
+      <span class="src-badge" style="background:${a.color}22;color:${a.color}">${esc(a.emoji)} ${esc(a.areaName)}</span>
       <span class="time-input">${esc(a.time)}</span>
     </div>`;
   }).join("");
   taskListEl.innerHTML = html || `<p class="empty-hint">Nada por aqui hoje.</p>`;
   taskListEl.querySelectorAll("[data-tt]").forEach(b=>b.onclick=()=>toggleTaskDone(b.dataset.tt));
-  taskListEl.querySelectorAll("[data-tauto]").forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.tauto.split("|"); const item=aToday.find(x=>x.kind===k&&x.id===id); toggleAutoDone(k,id,item&&item.text,item&&item.time); });
+  taskListEl.querySelectorAll("[data-tauto]").forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.tauto.split("|"); const item=aToday.find(x=>x.areaId===k&&x.id===id); toggleAutoDone(k,id,item&&item.text,item&&item.time); });
   taskListEl.querySelectorAll("[data-trn]").forEach(i=>i.onchange=()=>renameTask(i.dataset.trn,i.value));
   taskListEl.querySelectorAll("[data-ttime]").forEach(i=>i.onchange=()=>retimeTask(i.dataset.ttime,i.value));
   taskListEl.querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>deleteTask(b.dataset.tdel));
@@ -1767,40 +1825,73 @@ function wireRotina(c){
     whEl.innerHTML = wdata.map(d=>`<div class="wh-item"><div class="wh-day">${d.label}</div><div class="wh-mark ${markClass(d.pct)}">${d.pct}%</div></div>`).join("");
   }
 
-  // Rotina de treino/estudo
-  document.querySelectorAll(".subtab").forEach(b=>b.onclick=()=>{ routineTabActive=b.dataset.rt; renderRotina(c); });
-  const routineListEl=document.getElementById("rtRoutineList");
-  const items = routineTabActive==="treino" ? rotina.routineTreino : rotina.routineEstudo;
-  const sorted=[...items].sort((a,b)=> a.weekday-b.weekday || a.time.localeCompare(b.time));
-  routineListEl.innerHTML = sorted.length? sorted.map(r=>`
-    <div class="routine-row">
-      <span class="routine-day">${DOW_SHORT[r.weekday]}</span>
-      <span class="time-input" style="width:44px">${esc(r.time)}</span>
-      <input class="routine-input ${wide?"wide":""}" data-rtxt="${routineTabActive}|${r.id}" value="${esc(r.text)}">
-      <button class="icon-btn del" data-rdel="${routineTabActive}|${r.id}">🗑</button>
-    </div>`).join("") : `<p class="empty-hint">Nada na rotina de ${routineTabActive} ainda.</p>`;
-  routineListEl.querySelectorAll("[data-rtxt]").forEach(i=>i.onchange=()=>{ const [k,id]=i.dataset.rtxt.split("|"); editRoutineItem(k,id,i.value); });
-  routineListEl.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.rdel.split("|"); deleteRoutineItem(k,id); });
-  document.getElementById("rtRoutineAdd").onclick=()=>{
-    const day=document.getElementById("rtRoutineDay").value, time=document.getElementById("rtRoutineTime").value, inp=document.getElementById("rtRoutineInp");
-    if(inp.value.trim()){ addRoutineItem(routineTabActive, day, time, inp.value.trim()); inp.value=""; document.getElementById("rtRoutineTime").value=""; }
+  // Áreas da vida pessoal
+  if(!activeAreaId || !rotina.areas.find(a=>a.id===activeAreaId)) activeAreaId = rotina.areas[0] && rotina.areas[0].id;
+  const areaPillsEl=document.getElementById("rtAreaPills");
+  areaPillsEl.innerHTML = rotina.areas.map(a=>`<button class="subtab ${a.id===activeAreaId?"active":""}" data-area="${a.id}" style="${a.id===activeAreaId?`background:${a.color};border-color:${a.color}`:""}">${esc(a.emoji)} ${esc(a.name)}</button>`).join("");
+  areaPillsEl.querySelectorAll("[data-area]").forEach(b=>b.onclick=()=>{ activeAreaId=b.dataset.area; renderRotina(c); });
+  document.getElementById("rtAreaIconSuggest").innerHTML = HABIT_ICON_SUGGESTIONS.map(e=>`<button type="button" data-apicon="${e}">${e}</button>`).join("");
+  document.getElementById("rtAreaIconSuggest").querySelectorAll("[data-apicon]").forEach(b=>b.onclick=()=>{ document.getElementById("rtAreaIconInp").value=b.dataset.apicon; });
+  document.getElementById("rtAreaAddBtn").onclick=()=>{
+    const nameInp=document.getElementById("rtAreaNameInp"), iconInp=document.getElementById("rtAreaIconInp");
+    if(nameInp.value.trim()){ activeAreaId=addArea(iconInp.value.trim(), nameInp.value.trim()); nameInp.value=""; iconInp.value=""; }
   };
-  document.querySelectorAll("#rtRoutineHistSeg button").forEach(b=>b.onclick=()=>{ routineHistScale=b.dataset.scale; renderRotina(c); });
-  const rHistEl=document.getElementById("rtRoutineHist");
-  let rHistData;
-  if(routineHistScale==="days") rHistData=routineDaysHist(routineTabActive);
-  else if(routineHistScale==="weeks") rHistData=routineWeeksHist(routineTabActive,6);
-  else rHistData=routineMonthsHist(routineTabActive,6);
-  rHistEl.innerHTML = rHistData.map(d=>{
-    const cls = d.pct===null?"":markClass(d.pct);
-    return `<div class="wh-item"><div class="wh-day">${d.label}</div><div class="wh-mark ${cls}" style="${d.pct===null?"background:var(--line);color:var(--muted)":""}">${d.pct===null?"—":(d.pct>=100?"✓":d.pct+"%")}</div></div>`;
-  }).join("");
-  const rLogEl=document.getElementById("rtRoutineLog");
-  const logItems=routineLog(routineTabActive,10);
-  rLogEl.innerHTML = logItems.length? logItems.map(l=>{
-    const dt=new Date(l.date+"T00:00:00");
-    return `<div class="agenda-item"><span class="agenda-time">${esc(l.time||"")}</span><div style="flex:1"><div class="agenda-title">${esc(l.text||"")}</div><div class="agenda-tag">${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}</div></div></div>`;
-  }).join("") : `<p class="empty-hint">Nenhuma sessão registrada ainda.</p>`;
+
+  const activeArea = rotina.areas.find(a=>a.id===activeAreaId);
+  if(activeArea){
+    document.getElementById("rtAreaColorInp").value=activeArea.color;
+    document.getElementById("rtAreaColorInp").oninput=e=>setAreaColor(activeArea.id,e.target.value);
+    document.getElementById("rtAreaActiveNameInp").value=activeArea.name;
+    document.getElementById("rtAreaActiveNameInp").onchange=e=>renameArea(activeArea.id,e.target.value);
+    document.getElementById("rtAreaIconEditBtn").onclick=()=>{ const v=prompt("Novo ícone (emoji):",activeArea.emoji); if(v&&v.trim()) setAreaEmoji(activeArea.id,v.trim().slice(0,4)); };
+    document.getElementById("rtAreaDelBtn").onclick=()=>{ deleteArea(activeArea.id); activeAreaId=null; };
+
+    const routineListEl=document.getElementById("rtRoutineList");
+    const items = rotina.routineItems.filter(r=>r.areaId===activeArea.id);
+    const sorted=[...items].sort((a,b)=> a.weekday-b.weekday || a.time.localeCompare(b.time));
+    routineListEl.innerHTML = sorted.length? sorted.map(r=>`
+      <div class="routine-row">
+        <span class="routine-day">${DOW_SHORT[r.weekday]}</span>
+        <span class="time-input" style="width:78px">${esc(r.time)}${r.end?"–"+esc(r.end):""}</span>
+        <input class="routine-input ${wide?"wide":""}" data-rtxt="${r.id}" value="${esc(r.text)}">
+        ${r.note?`<span class="src-badge" style="background:var(--line);color:var(--muted)">${esc(r.note)}</span>`:""}
+        ${r.to?`<span class="src-badge" style="background:#B8963E22;color:var(--accent2)">até ${esc(r.to.split("-").reverse().join("/"))}</span>`:""}
+        <button class="icon-btn del" data-rdel="${r.id}">🗑</button>
+      </div>`).join("") : `<p class="empty-hint">Nada cadastrado em "${esc(activeArea.name)}" ainda.</p>`;
+    routineListEl.querySelectorAll("[data-rtxt]").forEach(i=>i.onchange=()=>editRoutineItem(i.dataset.rtxt,"text",i.value));
+    routineListEl.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=()=>deleteRoutineItem(b.dataset.rdel));
+    document.getElementById("rtRoutineAdd").onclick=()=>{
+      const day=document.getElementById("rtRoutineDay").value;
+      const start=document.getElementById("rtRoutineStart").value||"--:--";
+      const end=document.getElementById("rtRoutineEnd").value||"";
+      const textInp=document.getElementById("rtRoutineInp");
+      const note=document.getElementById("rtRoutineNote").value;
+      const from=document.getElementById("rtRoutineFrom").value;
+      const to=document.getElementById("rtRoutineTo").value;
+      if(textInp.value.trim()){
+        addRoutineItem(activeArea.id, day, start, end, textInp.value.trim(), note, from, to);
+        ["rtRoutineStart","rtRoutineEnd","rtRoutineNote","rtRoutineFrom","rtRoutineTo"].forEach(id=>document.getElementById(id).value="");
+        textInp.value="";
+      }
+    };
+
+    document.querySelectorAll("#rtRoutineHistSeg button").forEach(b=>b.onclick=()=>{ routineHistScale=b.dataset.scale; renderRotina(c); });
+    const rHistEl=document.getElementById("rtRoutineHist");
+    let rHistData;
+    if(routineHistScale==="days") rHistData=routineDaysHist(activeArea.id);
+    else if(routineHistScale==="weeks") rHistData=routineWeeksHist(activeArea.id,6);
+    else rHistData=routineMonthsHist(activeArea.id,6);
+    rHistEl.innerHTML = rHistData.map(d=>{
+      const cls = d.pct===null?"":markClass(d.pct);
+      return `<div class="wh-item"><div class="wh-day">${d.label}</div><div class="wh-mark ${cls}" style="${d.pct===null?"background:var(--line);color:var(--muted)":""}">${d.pct===null?"—":(d.pct>=100?"✓":d.pct+"%")}</div></div>`;
+    }).join("");
+    const rLogEl=document.getElementById("rtRoutineLog");
+    const logItems=routineLog(activeArea.id,10);
+    rLogEl.innerHTML = logItems.length? logItems.map(l=>{
+      const dt=new Date(l.date+"T00:00:00");
+      return `<div class="agenda-item"><span class="agenda-time">${esc(l.time||"")}</span><div style="flex:1"><div class="agenda-title">${esc(l.text||"")}</div><div class="agenda-tag">${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}</div></div></div>`;
+    }).join("") : `<p class="empty-hint">Nenhuma sessão registrada ainda.</p>`;
+  }
 
   // Metas
   const goalListEl=document.getElementById("rtGoalList");
