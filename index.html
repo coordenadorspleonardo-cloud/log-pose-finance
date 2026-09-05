@@ -53,7 +53,7 @@ a{color:inherit;}
 
 /* APP SHELL */
 #appScreen{display:none;min-height:100vh;flex-direction:column;}
-header{background:var(--ink);color:var(--onInk);padding:20px 24px;position:relative;overflow:hidden;}
+header{background:var(--ink);color:var(--onInk);padding:20px 32px;position:relative;overflow:hidden;}
 header .wm{position:absolute;top:-40px;right:-30px;opacity:.09;pointer-events:none;}
 .hd-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;position:relative;z-index:1;}
 .hd-left{display:flex;align-items:center;gap:10px;}
@@ -62,17 +62,22 @@ header .wm{position:absolute;top:-40px;right:-30px;opacity:.09;pointer-events:no
 .hd-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .hd-right select,.hd-right button{background:transparent;color:var(--onInk);border:1px solid #ffffff33;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer;}
 .hd-right select option{background:#FFFFFF;color:#1B2430;}
-nav.tabs{display:flex;gap:6px;padding:12px 24px;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--card);}
+nav.tabs{display:flex;gap:6px;padding:12px 32px;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--card);}
 .tab{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap;}
 .tab.active{background:var(--ink);color:var(--onInk);border-color:var(--ink);}
-main{padding:20px 24px 60px;max-width:1100px;margin:0 auto;width:100%;}
+main{padding:20px 32px 60px;width:100%;}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;}
 .card-title{font-family:var(--serif);font-size:17px;font-weight:600;margin:0 0 14px;}
+.section-title{font-family:var(--serif);font-size:18px;font-weight:600;margin:0 0 4px;}
+.section-sub{font-size:12px;color:var(--muted);margin:0 0 14px;}
 
 /* TABLE */
 table{border-collapse:collapse;width:100%;}
 th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:6px 8px;}
 td{padding:3px 4px;font-size:12.5px;border-top:1px solid var(--line);}
+.mtable-scroll{overflow-x:auto;}
+.mtable th:nth-child(1),.mtable td:nth-child(1){position:sticky;left:0;z-index:2;background:var(--card);}
+.mtable th:nth-child(2),.mtable td:nth-child(2){position:sticky;left:26px;z-index:2;background:var(--card);box-shadow:2px 0 5px -3px rgba(0,0,0,.25);}
 td.num{text-align:right;font-family:var(--mono);}
 tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono);}
 .cell-input{border:none;background:transparent;width:100%;font-family:inherit;font-size:13px;padding:5px 4px;color:var(--text);}
@@ -115,21 +120,31 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .style-btn.active{border-color:var(--positive);background:#1F7A5C18;color:var(--positive);}
 
 /* Navegação Rotina/Finanças */
-.toplevel{display:flex;gap:8px;padding:14px 24px 0;max-width:1100px;margin:0 auto;}
-.toplevel button{flex:1;max-width:220px;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:12px 12px 0 0;border:1px solid var(--line);border-bottom:none;background:var(--paper);color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;}
+.toplevel{display:flex;gap:8px;padding:14px 32px 0;}
+.toplevel button{flex:0 0 auto;min-width:160px;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:12px 12px 0 0;border:1px solid var(--line);border-bottom:none;background:var(--paper);color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;}
 .toplevel button.active{background:var(--card);color:var(--text);}
-.fin-controls{display:flex;gap:8px;padding:10px 24px;justify-content:flex-end;flex-wrap:wrap;background:var(--card);border-bottom:1px solid var(--line);}
+.fin-controls{display:flex;gap:8px;padding:10px 32px;justify-content:flex-end;flex-wrap:wrap;background:var(--card);border-bottom:1px solid var(--line);}
 .fin-controls select,.fin-controls button{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;background:var(--paper);color:var(--text);cursor:pointer;}
 
 /* ROTINA */
 .streak-chips{display:flex;flex-wrap:wrap;gap:6px;}
 .streak-chip{background:#ffffff1a;border-radius:8px;padding:5px 9px;font-size:11.5px;display:flex;align-items:center;gap:5px;font-family:var(--mono);}
 .ghost-row-btn{background:none;border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--muted);cursor:pointer;}
-.task-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
-.task-row:last-child{border-bottom:none;}
-.task-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
-.task-left.stack-full{flex-basis:100%;}
-.chk{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;color:#fff;font-size:13px;}
+
+/* Kanban de tarefas */
+.kanban{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:640px){.kanban{grid-template-columns:1fr;}}
+.kcol-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.kcol-hd b{font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+.kcount{background:var(--card);border-radius:999px;padding:2px 9px;font-size:10.5px;font-family:var(--mono);color:var(--muted);}
+.empty-col{font-size:12px;color:var(--muted);padding:18px 4px;text-align:center;border:1.5px dashed var(--line);border-radius:14px;}
+.task-row{display:flex;align-items:center;gap:10px;padding:11px 12px;margin-bottom:9px;background:var(--card);border-radius:13px;box-shadow:0 1px 2px rgba(20,27,35,.05),0 4px 14px rgba(20,27,35,.05);flex-wrap:wrap;}
+.task-row:last-child{margin-bottom:0;}
+.task-body{display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;}
+.task-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.task-actions{display:flex;gap:1px;flex-shrink:0;}
+.chk{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;color:#fff;font-size:14px;transition:all .15s;}
+.chk:hover{border-color:var(--positive);}
 .chk.on{background:var(--positive);border-color:var(--positive);}
 .row-input{flex:1;border:none;background:transparent;font-size:13.5px;color:var(--text);padding:2px;min-width:60px;}
 .row-input.wide{min-width:190px;}
@@ -139,21 +154,22 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .src-badge.treino{background:#1F7A5C22;color:var(--positive);}
 .src-badge.estudo{background:#B8963E22;color:var(--accent2);}
 .src-badge.repeat{background:var(--line);color:var(--muted);}
-.habit-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
-.habit-row:last-child{border-bottom:none;}
-.habit-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
-.habit-left.stack-full{flex-basis:100%;}
-.habit-emoji{width:32px;height:32px;border-radius:9px;background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;border:none;cursor:pointer;}
-.habit-streak{font-family:var(--mono);font-size:11px;color:var(--accent2);flex-shrink:0;}
+
+/* Hábitos — emoji grande, sequência em destaque, barras preenchidas */
+.hcard{background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 1px 2px rgba(20,27,35,.05),0 4px 14px rgba(20,27,35,.05);}
+.hcard:last-child{margin-bottom:0;}
+.hemoji{width:44px;height:44px;border-radius:13px;background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0;border:none;cursor:pointer;}
+.hbody{flex:1;min-width:150px;}
+.hname-inp{font-size:14px;font-weight:600;}
+.hbars{display:flex;gap:4px;margin-top:8px;}
+.hbar{flex:1;height:10px;min-width:14px;border-radius:999px;border:none;background:var(--line);cursor:pointer;padding:0;}
+.hbar.on{background:var(--positive);}
+.hbar.today{box-shadow:0 0 0 2px var(--accent2);}
+.hstreak{font-family:var(--mono);font-weight:700;font-size:13.5px;padding:5px 11px;border-radius:10px;flex-shrink:0;}
+.hactions{display:flex;gap:1px;flex-shrink:0;}
 .icon-suggest{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;}
 .icon-suggest button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--paper);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
 .icon-suggest button:hover{border-color:var(--positive);}
-.dots{display:flex;gap:4px;}
-.dot-col{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.dot-lbl{font-size:8px;color:var(--muted);line-height:1;white-space:nowrap;}
-.dot{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line);cursor:pointer;background:transparent;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;padding:0;}
-.dot.on{background:var(--positive);border-color:var(--positive);}
-.dot.today{box-shadow:0 0 0 2px var(--accent2);}
 .segmented{display:flex;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:14px;gap:3px;}
 .segmented button{flex:1;border:none;background:transparent;padding:7px 8px;font-size:12px;border-radius:7px;cursor:pointer;color:var(--muted);}
 .segmented button.active{background:var(--card);color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08);}
@@ -285,8 +301,8 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
     </div>
   </header>
   <div class="toplevel" id="toplevelNav">
-    <button id="btnTopRotina">🔄 Rotina</button>
-    <button id="btnTopFin">💰 Finanças</button>
+    <button id="btnTopRotina">Rotina</button>
+    <button id="btnTopFin">Finanças</button>
   </div>
   <div id="finChrome">
     <div class="fin-controls">
@@ -436,6 +452,7 @@ let budgets={}, goals=[];
 let tab="dashboard";
 let openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
 let wrapNames=false; // exibir nomes completos (larga a coluna) em todas as tabelas mensais
+let uiIcons={rotina:"🔄",financas:"💰",streak:"🔥"}; // emojis customizáveis (aba Rotina, aba Finanças, sequência de hábitos)
 let dashShowAllLanc=false; // mostrar todos os lançamentos do painel, não só os 8 principais
 let saveTimer=null, applyingRemote=false, unsubState=null;
 let chartDash=null, chartPie=null, chartCompLine=null, chartCompBar=null, chartRotinaDash=null, chartRotinaCompare=null;
@@ -587,6 +604,7 @@ function startDataListener(uid){
       sharedWith=d.sharedWith||[];
       watching=d.watching||[];
       wrapNames=d.wrapNames||false;
+      uiIcons={rotina:"🔄",financas:"💰",streak:"🔥",...(d.uiIcons||{})};
       appSection=d.appSection||"rotina";
       rotina={...defaultRotina(), ...(d.rotina||{})};
       migrateRotinaAreas();
@@ -596,8 +614,9 @@ function startDataListener(uid){
       budgets={}; goals=[]; sharedWith=[]; watching=[];
       openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
       appSection="rotina"; rotina=defaultRotina(); migrateRotinaAreas();
+      uiIcons={rotina:"🔄",financas:"💰",streak:"🔥"};
       await setDoc(doc(db,"users",uid),{name:user.displayName||user.email.split("@")[0],email:user.email,createdAt:serverTimestamp()},{merge:true});
-      await setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,sharedWith,sharedWithUids:[],watching,appSection,rotina});
+      await setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,sharedWith,sharedWithUids:[],watching,appSection,rotina,uiIcons});
     }
     loaded=true;
     applyThemeVars();
@@ -612,7 +631,7 @@ function scheduleSave(){
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     const stateRef=doc(db,"users",user.uid,"data","state");
-    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames,appSection,rotina}).catch(()=>{});
+    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames,uiIcons,appSection,rotina}).catch(()=>{});
   },500);
 }
 
@@ -689,6 +708,13 @@ function updateValue(section,itemId,monthIdx,val){
     return {...it,values};
   });
   scheduleSave(); renderAll();
+  if(pendingCellFocus){
+    const {containerId,itemId:tid,month:tm}=pendingCellFocus;
+    pendingCellFocus=null;
+    const cont=document.getElementById(containerId);
+    const el=cont&&cont.querySelector(`[data-val="${tid}"][data-month="${tm}"]`);
+    if(el){ el.focus(); el.select&&el.select(); }
+  }
 }
 function toggleRecurring(section,itemId){
   const y=years[year];
@@ -759,6 +785,8 @@ const TABS=[
 ];
 function goSection(s){ appSection=s; scheduleSave(); renderShell(); renderAll(); }
 function renderShell(){
+  document.getElementById("btnTopRotina").textContent=`${uiIcons.rotina} Rotina`;
+  document.getElementById("btnTopFin").textContent=`${uiIcons.financas} Finanças`;
   document.getElementById("btnTopRotina").classList.toggle("active", appSection==="rotina");
   document.getElementById("btnTopFin").classList.toggle("active", appSection==="financas");
   document.getElementById("btnTopRotina").onclick=()=>goSection("rotina");
@@ -815,9 +843,24 @@ function renderAppearancePanel(){
       <option value="area" ${chartStyle==="area"?"selected":""}>Área</option>
     </select>
     <p class="lbl">Tabelas</p>
-    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer">
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;margin-bottom:16px">
       <input type="checkbox" id="wrapNamesToggle" ${wrapNames?"checked":""}> Mostrar nomes completos (alarga a coluna)
-    </label>`;
+    </label>
+    <p class="lbl">Ícones do app</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <div style="text-align:center">
+        <input type="text" maxlength="4" value="${esc(uiIcons.rotina)}" data-iconkey="rotina" style="width:40px;height:40px;text-align:center;font-size:19px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--text)">
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Aba Rotina</div>
+      </div>
+      <div style="text-align:center">
+        <input type="text" maxlength="4" value="${esc(uiIcons.financas)}" data-iconkey="financas" style="width:40px;height:40px;text-align:center;font-size:19px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--text)">
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Aba Finanças</div>
+      </div>
+      <div style="text-align:center">
+        <input type="text" maxlength="4" value="${esc(uiIcons.streak)}" data-iconkey="streak" style="width:40px;height:40px;text-align:center;font-size:19px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--text)">
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Sequência</div>
+      </div>
+    </div>`;
   p.querySelectorAll("[data-preset]").forEach(b=>b.onclick=()=>{const pr=PRESETS.find(x=>x.id===b.dataset.preset); colors={...pr.colors}; applyThemeVars(); scheduleSave(); renderShell(); renderAll();});
   p.querySelectorAll("[data-colorkey]").forEach(inp=>inp.oninput=()=>setColor(inp.dataset.colorkey,inp.value));
   p.querySelectorAll("[data-resetcolor]").forEach(b=>b.onclick=()=>{ colors={...colors}; delete colors[b.dataset.resetcolor]; applyThemeVars(); scheduleSave(); renderShell(); renderAll(); renderAppearancePanel(); });
@@ -827,6 +870,12 @@ function renderAppearancePanel(){
   wireAddRow("catAdd", name=>addCategory(name));
   document.getElementById("chartStyleSel").onchange=e=>{chartStyle=e.target.value;scheduleSave();renderAll();};
   document.getElementById("wrapNamesToggle").onchange=e=>{ wrapNames=e.target.checked; scheduleSave(); renderAll(); renderAppearancePanel(); };
+  p.querySelectorAll("[data-iconkey]").forEach(inp=>inp.onchange=()=>{
+    const v=inp.value.trim();
+    if(v) uiIcons={...uiIcons,[inp.dataset.iconkey]:v};
+    inp.value=uiIcons[inp.dataset.iconkey];
+    scheduleSave(); renderShell(); renderAll();
+  });
 }
 document.getElementById("btnAparencia").onclick=(e)=>{
   e.stopPropagation();
@@ -873,18 +922,48 @@ function monthlyTableHTML(items,section,accent,lockedRow,extraCol){
       <td></td></tr>`;
   }
   if(!items.length && !lockedRow) rowsHtml=`<tr><td colspan="16" class="empty-msg">Nenhum item ainda. Adicione abaixo.</td></tr>`;
-  return `<div style="overflow-x:auto"><table>
+  return `<div class="mtable-scroll"><table class="mtable">
     <thead><tr><th style="width:26px"></th><th>Item</th>${extraCol?`<th>${extraCol.label}</th>`:""}${idxs.map(i=>`<th style="text-align:right">${MONTHS[i]}</th>`).join("")}${showTotal?`<th style="text-align:right">Total</th>`:""}<th style="width:28px"></th></tr></thead>
     <tbody>${rowsHtml}</tbody>
     <tfoot><tr><td></td><td>Total</td>${extraCol?`<td></td>`:""}${idxs.map(i=>`<td class="num" style="color:${accent}">${fmt(totals[i])}</td>`).join("")}${showTotal?`<td class="num" style="color:${accent}">${fmt(sumArr(totals))}</td>`:""}<td></td></tr></tfoot>
   </table></div>`;
 }
+let mtableScrollPos={}; // containerId -> scrollLeft, pra não perder a posição ao editar um valor
+let pendingCellFocus=null; // {containerId,itemId,month} — pra onde voltar o foco depois do re-render (Tab/Enter)
 function wireMonthlyTable(container,section,extraCol){
   container.querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>toggleRecurring(section,b.dataset.rec));
   container.querySelectorAll("[data-rename]").forEach(inp=>inp.onchange=()=>renameItem(section,inp.dataset.rename,inp.value));
-  container.querySelectorAll("[data-val]").forEach(inp=>inp.onchange=()=>updateValue(section,inp.dataset.val,Number(inp.dataset.month),inp.value));
+  container.querySelectorAll("[data-val]").forEach(inp=>{
+    inp.onchange=()=>updateValue(section,inp.dataset.val,Number(inp.dataset.month),inp.value);
+    inp.onkeydown=(e)=>{
+      if(e.key!=="Tab"&&e.key!=="Enter") return;
+      const itemId=inp.dataset.val, month=Number(inp.dataset.month);
+      let targetItemId=itemId, targetMonth=month;
+      if(e.key==="Tab"){
+        const rowInputs=[...container.querySelectorAll(`[data-val="${itemId}"]`)];
+        const idx=rowInputs.indexOf(inp), nextIdx=e.shiftKey?idx-1:idx+1;
+        if(nextIdx<0||nextIdx>=rowInputs.length) return; // deixa o Tab padrão sair da tabela
+        e.preventDefault();
+        targetMonth=Number(rowInputs[nextIdx].dataset.month);
+      } else {
+        const colInputs=[...container.querySelectorAll(`[data-val][data-month="${month}"]`)];
+        const idx=colInputs.indexOf(inp), nextIdx=e.shiftKey?idx-1:idx+1;
+        if(nextIdx<0||nextIdx>=colInputs.length) return;
+        e.preventDefault();
+        targetItemId=colInputs[nextIdx].dataset.val;
+      }
+      pendingCellFocus={containerId:container.id,itemId:targetItemId,month:targetMonth};
+      inp.onchange=null;
+      updateValue(section,itemId,month,inp.value);
+    };
+  });
   container.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ if(confirm("Remover item?")) deleteItem(section,b.dataset.del); });
   if(extraCol) extraCol.wire(container);
+  const scrollWrap=container.querySelector(".mtable-scroll");
+  if(scrollWrap){
+    if(container.id&&mtableScrollPos[container.id]!=null) scrollWrap.scrollLeft=mtableScrollPos[container.id];
+    scrollWrap.onscroll=()=>{ if(container.id) mtableScrollPos[container.id]=scrollWrap.scrollLeft; };
+  }
 }
 const catExtraCol={
   label:"Categoria",
@@ -1714,7 +1793,7 @@ function renderRotina(c){
   const doneCount=tToday.filter(t=>t.done&&t.done[todayStr()]).length + aToday.filter(a=>rotina.autoTaskDone[todayStr()+"|"+a.areaId+"|"+a.id]).length;
   const totalCount=tToday.length+aToday.length;
   const next=nextAgendaItem();
-  const streakChips=rotina.habits.map(h=>`<span class="streak-chip">${esc(h.emoji)} ${esc(h.name.split(" ").slice(0,2).join(" "))} 🔥${habitStreak(h)}</span>`).join("");
+  const streakChips=rotina.habits.map(h=>`<span class="streak-chip">${esc(h.emoji)} ${esc(h.name.split(" ").slice(0,2).join(" "))} ${uiIcons.streak}${habitStreak(h)}</span>`).join("");
 
   c.innerHTML = `
     <section style="background:var(--ink);color:var(--onInk);border-radius:20px;padding:22px 24px;margin-bottom:18px">
@@ -1728,14 +1807,14 @@ function renderRotina(c){
     </section>
 
     <div class="grid2">
-      <div class="card">
+      <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
-          <p class="card-title" style="margin:0">Tarefas de hoje</p>
+          <p class="section-title" style="margin:0">Tarefas de hoje</p>
           <button class="ghost-row-btn" id="rtMarkAll">Marcar tudo</button>
         </div>
-        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">As com etiqueta colorida vêm das suas Áreas da vida pessoal.</p>
+        <p class="section-sub">Marque como feita e ela pula sozinha pra coluna "Feito". As com etiqueta colorida vêm das suas Áreas.</p>
         <div id="rtTaskList"></div>
-        <div class="add-row">
+        <div class="add-row" style="margin-top:12px">
           <input type="text" id="rtTaskInp" placeholder="Nova tarefa">
           <input type="text" id="rtTaskTime" placeholder="hh:mm" style="max-width:70px">
           <select id="rtTaskRepeat"><option value="">Não repete</option><option value="week">Repete toda semana</option></select>
@@ -1743,11 +1822,11 @@ function renderRotina(c){
         </div>
       </div>
 
-      <div class="card">
-        <p class="card-title">Hábitos recorrentes</p>
-        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">🔥 = sequência atual. Bolinhas = últimos 7 dias reais (clique no ícone pra trocar).</p>
+      <div>
+        <p class="section-title">Hábitos recorrentes</p>
+        <p class="section-sub">${uiIcons.streak} = sequência atual. Barrinhas = últimos 7 dias reais (clique numa barrinha pra marcar/desmarcar aquele dia; clique no ícone pra trocar).</p>
         <div id="rtHabitList"></div>
-        <div class="add-row">
+        <div class="add-row" style="margin-top:12px">
           <input type="text" id="rtHabitIcon" placeholder="🙏" style="max-width:52px;text-align:center">
           <input type="text" id="rtHabitInp" placeholder="Novo hábito">
           <button id="rtHabitAdd">＋ Adicionar</button>
@@ -1946,35 +2025,41 @@ function wireRotina(c){
   const wide=wrapNames;
   const tToday=tasksToday(), aToday=autoTasksToday();
 
-  // Tarefas
+  // Tarefas (kanban: A fazer / Feito)
   const taskListEl=document.getElementById("rtTaskList");
-  let html = tToday.map(t=>{
+  const todoRows=[], doneRows=[];
+  tToday.forEach(t=>{
     const done = !!(t.done&&t.done[todayStr()]);
-    return `<div class="task-row">
-      <div class="task-left ${wide?"stack-full":""}">
-        <button class="chk ${done?"on":""}" data-tt="${t.id}">${done?"✓":""}</button>
+    const row = `<div class="task-row">
+      <button class="chk ${done?"on":""}" data-tt="${t.id}">${done?"✓":""}</button>
+      <div class="task-body">
         <input class="row-input ${wide?"wide":""} ${done?"done-text":""}" data-trn="${t.id}" value="${esc(t.name)}">
+        <div class="task-meta">${t.repeatWeekly?`<span class="src-badge repeat">🔁 semanal</span>`:""}<input class="time-input" data-ttime="${t.id}" value="${esc(t.time)}"></div>
       </div>
-      ${t.repeatWeekly?`<span class="src-badge repeat">🔁 semanal</span>`:""}
-      <input class="time-input" data-ttime="${t.id}" value="${esc(t.time)}">
-      <button class="icon-btn" data-tup="${t.id}" title="Subir">↑</button>
-      <button class="icon-btn" data-tdown="${t.id}" title="Descer">↓</button>
-      <button class="icon-btn del" data-tdel="${t.id}">🗑</button>
+      <div class="task-actions">
+        <button class="icon-btn" data-tup="${t.id}" title="Subir">↑</button>
+        <button class="icon-btn" data-tdown="${t.id}" title="Descer">↓</button>
+        <button class="icon-btn del" data-tdel="${t.id}">🗑</button>
+      </div>
     </div>`;
-  }).join("");
-  html += aToday.map(a=>{
+    (done?doneRows:todoRows).push(row);
+  });
+  aToday.forEach(a=>{
     const key=todayStr()+"|"+a.areaId+"|"+a.id;
     const done=!!rotina.autoTaskDone[key];
-    return `<div class="task-row">
-      <div class="task-left ${wide?"stack-full":""}">
-        <button class="chk ${done?"on":""}" data-tauto="${a.areaId}|${a.id}">${done?"✓":""}</button>
+    const row = `<div class="task-row">
+      <button class="chk ${done?"on":""}" data-tauto="${a.areaId}|${a.id}">${done?"✓":""}</button>
+      <div class="task-body">
         <span class="row-input ${wide?"wide":""} ${done?"done-text":""}" style="padding:2px 0">${esc(a.text)}</span>
+        <div class="task-meta"><span class="src-badge" style="background:${a.color}22;color:${a.color}">${esc(a.emoji)} ${esc(a.areaName)}</span><span class="time-input">${esc(a.time)}</span></div>
       </div>
-      <span class="src-badge" style="background:${a.color}22;color:${a.color}">${esc(a.emoji)} ${esc(a.areaName)}</span>
-      <span class="time-input">${esc(a.time)}</span>
     </div>`;
-  }).join("");
-  taskListEl.innerHTML = html || `<p class="empty-hint">Nada por aqui hoje.</p>`;
+    (done?doneRows:todoRows).push(row);
+  });
+  taskListEl.innerHTML = `<div class="kanban">
+    <div><div class="kcol-hd"><b>A fazer</b><span class="kcount">${todoRows.length}</span></div>${todoRows.length?todoRows.join(""):`<div class="empty-col">Tudo feito por aqui 🎉</div>`}</div>
+    <div><div class="kcol-hd"><b>Feito</b><span class="kcount">${doneRows.length}</span></div>${doneRows.length?doneRows.join(""):`<div class="empty-col">Nada concluído ainda</div>`}</div>
+  </div>`;
   taskListEl.querySelectorAll("[data-tt]").forEach(b=>b.onclick=()=>toggleTaskDone(b.dataset.tt));
   taskListEl.querySelectorAll("[data-tauto]").forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.tauto.split("|"); const item=aToday.find(x=>x.areaId===k&&x.id===id); toggleAutoDone(k,id,item&&item.text,item&&item.time); });
   taskListEl.querySelectorAll("[data-trn]").forEach(i=>i.onchange=()=>renameTask(i.dataset.trn,i.value));
@@ -1992,23 +2077,25 @@ function wireRotina(c){
   // Hábitos
   const habitListEl=document.getElementById("rtHabitList");
   habitListEl.innerHTML = rotina.habits.length? rotina.habits.map(h=>`
-    <div class="habit-row">
-      <div class="habit-left ${wide?"stack-full":""}">
-        <button class="habit-emoji" data-hicon="${h.id}" title="Trocar ícone">${esc(h.emoji)}</button>
-        <input class="row-input ${wide?"wide":""}" data-hrn="${h.id}" value="${esc(h.name)}" style="font-weight:500">
-        <span class="habit-streak">🔥${habitStreak(h)}</span>
+    <div class="hcard">
+      <button class="hemoji" data-hicon="${h.id}" title="Trocar ícone">${esc(h.emoji)}</button>
+      <div class="hbody">
+        <input class="row-input hname-inp ${wide?"wide":""}" data-hrn="${h.id}" value="${esc(h.name)}">
+        <div class="hbars">${habitLast7(h).map((d,di)=>{
+          const dt=new Date(d.ds+"T00:00:00");
+          return `<button class="hbar ${d.on?"on":""} ${di===6?"today":""}" data-hdot="${h.id}|${d.ds}" title="${DOW_FULL[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}${di===6?" (hoje)":""}"></button>`;
+        }).join("")}</div>
       </div>
-      <div class="dots">${habitLast7(h).map((d,di)=>{
-        const dt=new Date(d.ds+"T00:00:00");
-        return `<div class="dot-col"><span class="dot-lbl">${DOW_SHORT[dt.getDay()]} ${dt.getDate()}</span><button class="dot ${d.on?"on":""} ${di===6?"today":""}" data-hdot="${h.id}|${d.ds}" title="${di===6?"Hoje":""} ${DOW_FULL[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}">${d.on?"✓":""}</button></div>`;
-      }).join("")}</div>
-      ${h.hasNotes?`<button class="icon-btn" data-hnote="${h.id}" title="Observação de hoje">📝</button>`:""}
-      <button class="icon-btn" data-hexpand="${h.id}" title="Ver histórico completo">${expandedHabitId===h.id?"▾":"▸"}</button>
-      <button class="icon-btn" data-hup="${h.id}" title="Subir">↑</button>
-      <button class="icon-btn" data-hdown="${h.id}" title="Descer">↓</button>
-      <button class="icon-btn del" data-hdel="${h.id}">🗑</button>
+      <span class="hstreak" style="background:${withAlpha(colors.accent2,"1c")};color:${colors.accent2}">${uiIcons.streak}${habitStreak(h)}</span>
+      <div class="hactions">
+        ${h.hasNotes?`<button class="icon-btn" data-hnote="${h.id}" title="Observação de hoje">📝</button>`:""}
+        <button class="icon-btn" data-hexpand="${h.id}" title="Ver histórico completo">${expandedHabitId===h.id?"▾":"▸"}</button>
+        <button class="icon-btn" data-hup="${h.id}" title="Subir">↑</button>
+        <button class="icon-btn" data-hdown="${h.id}" title="Descer">↓</button>
+        <button class="icon-btn del" data-hdel="${h.id}">🗑</button>
+      </div>
     </div>
-    ${expandedHabitId===h.id?`<div style="padding:6px 2px 14px 42px;max-width:100%;overflow:hidden">
+    ${expandedHabitId===h.id?`<div style="padding:0 2px 14px 16px;max-width:100%;overflow:hidden">
       ${habitFullHistory(h).length? habitFullHistory(h).map(d=>{
         const dt=new Date(d.ds+"T00:00:00");
         return `<div class="hist-row">
