@@ -14,6 +14,7 @@
 <link rel="icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
 :root{
   --serif:'Fraunces',serif; --sans:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
@@ -196,7 +197,11 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .goal-item-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px;font-weight:600;}
 .bar-track{height:6px;background:var(--line);border-radius:999px;overflow:hidden;}
 .bar-fill{height:100%;border-radius:999px;background:var(--positive);}
-.goal-sub{font-size:11px;color:var(--muted);margin-top:5px;}
+.goal-sub{font-size:11px;color:var(--muted);margin-top:5px;overflow-wrap:break-word;word-break:break-word;}
+.hist-row{padding:6px 0;border-bottom:1px solid var(--line);}
+.hist-row:last-child{border-bottom:none;}
+.hist-note-inp{width:100%;min-height:34px;margin-top:4px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;font-family:inherit;color:var(--text);background:var(--paper);resize:vertical;box-sizing:border-box;overflow-wrap:break-word;}
+.hist-note-view{font-size:12px;color:var(--text);margin-top:4px;overflow-wrap:break-word;word-break:break-word;white-space:pre-wrap;}
 .week-bars{display:flex;align-items:flex-end;gap:8px;height:90px;}
 .week-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;}
 .week-bar{width:100%;background:var(--positive);border-radius:4px 4px 0 0;min-height:3px;}
@@ -433,7 +438,7 @@ let openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
 let wrapNames=false; // exibir nomes completos (larga a coluna) em todas as tabelas mensais
 let dashShowAllLanc=false; // mostrar todos os lançamentos do painel, não só os 8 principais
 let saveTimer=null, applyingRemote=false, unsubState=null;
-let chartDash=null, chartPie=null, chartCompLine=null, chartCompBar=null, chartRotinaDash=null;
+let chartDash=null, chartPie=null, chartCompLine=null, chartCompBar=null, chartRotinaDash=null, chartRotinaCompare=null;
 // ── visão combinada ──
 let sharedWith=[]; // [{uid,email}] — quem eu deixo ler meus dados
 let watching=[];   // [{uid,email}] — de quem eu quero ver os dados (só leitura)
@@ -1309,7 +1314,12 @@ function habitLast7(h){
   for(let i=6;i>=0;i--){ const d=addDays(new Date(),-i); arr.push({ds:dateStr(d), on: !!(h.log&&h.log[dateStr(d)])}); }
   return arr;
 }
-const HABIT_ICON_SUGGESTIONS = ["🙏","📖","⏰","🏋️","🧘","🍎","🧹","💊","🚿","📚","💧","🎯","🌙","🎧","✍️","🚭","🥗","🏃"];
+const HABIT_ICON_SUGGESTIONS = [
+  "🙏","📖","⏰","🏋️","🧘","🍎","🧹","💊","🚿","📚","💧","🎯","🌙","🎧","✍️","🚭","🥗","🏃",
+  "💼","🎤","💰","🎓","🥊","⚽","🎨","💻","🩺","🧠","📝","📅","🔥","🌱","🚴","🏊","🛏️","☕",
+  "🎵","📷","🎮","🧩","🛠️","🌿","🐕","🧺","🚗","✈️","📞","💡","🎬","♟️","🧵","🪥","🗣️","📈",
+  "🧾","🛒","🍳","🏆","⭐","❤️","😴","🌤️","📐","🧗","🏄","🎹","🧗‍♀️","🧵","🧑‍🎨","🌎"
+];
 function addHabit(name,emoji,hasNotes){ rotina.habits.push({id:nid("hab"), emoji:emoji||"⭐", name, log:{}, notes:{}, hasNotes:!!hasNotes}); scheduleSave(); renderAll(); }
 function renameHabit(id,name){ const h=rotina.habits.find(x=>x.id===id); if(h) h.name=name; scheduleSave(); }
 function editHabitIcon(id){
@@ -1554,16 +1564,14 @@ function currentWeekDates(){
 }
 
 // ───────── ROTINA: DASHBOARD ─────────
-const DASH_RANGES = [
-  {label:"Últimos 7 dias", days:7},
-  {label:"Últimas 2 semanas", days:14},
-  {label:"Últimas 3 semanas", days:21},
-  {label:"Últimas 4 semanas", days:28},
-  {label:"Últimos 2 meses", days:60},
-  {label:"Últimos 3 meses", days:90},
-  {label:"Últimos 6 meses", days:180},
-  {label:"Último ano", days:365},
+const DASH_QUICK_PICKS = [
+  {label:"7 dias", n:7, unit:"days"},
+  {label:"30 dias", n:30, unit:"days"},
+  {label:"3 meses", n:3, unit:"months"},
+  {label:"6 meses", n:6, unit:"months"},
+  {label:"1 ano", n:12, unit:"months"},
 ];
+function unitToDays(n,unit){ n=Math.max(1,Number(n)||1); return unit==="weeks"?n*7 : unit==="months"?n*30 : n; }
 function rangeDates(days){ const arr=[]; for(let i=days-1;i>=0;i--) arr.push(addDays(new Date(),-i)); return arr; }
 function dashboardStats(days){
   const dates=rangeDates(days), dateStrs=dates.map(dateStr);
@@ -1617,6 +1625,75 @@ function dashboardTrend(days){
   }
   return buckets;
 }
+function habitTrend(habitId,days){
+  const dates=rangeDates(days);
+  const bucketSize = days>180?30 : days>28?7 : 1;
+  const h=rotina.habits.find(x=>x.id===habitId);
+  const buckets=[];
+  for(let i=0;i<dates.length;i+=bucketSize){
+    const slice=dates.slice(i,i+bucketSize);
+    const dsSlice=slice.map(dateStr);
+    const pct = h? Math.round(dsSlice.filter(ds=>h.log&&h.log[ds]).length/dsSlice.length*100) : 0;
+    const label = bucketSize===1||bucketSize===7 ? `${slice[0].getDate()}/${slice[0].getMonth()+1}` : slice[0].toLocaleDateString("pt-BR",{month:"short"}).replace(".","");
+    buckets.push({label,pct});
+  }
+  return buckets;
+}
+function goalWeeklyHistory(g,weeks){
+  const arr=[];
+  const today=new Date(), thisSunday=addDays(today,-today.getDay());
+  for(let w=weeks-1; w>=0; w--){
+    const startSunday=addDays(thisSunday,-7*w);
+    let count=0;
+    if(g.linkedHabitId){
+      const h=rotina.habits.find(x=>x.id===g.linkedHabitId);
+      if(h) for(let i=0;i<7;i++){ const ds=dateStr(addDays(startSunday,i)); if(h.log&&h.log[ds]) count++; }
+    }
+    arr.push({label: w===0?"Essa semana":`-${w}sem`, count, pct: g.target? Math.round(count/g.target*100):0});
+  }
+  return arr;
+}
+function exportRotinaCSV(){
+  const rows=[["Tipo","Nome","Data","Status/Valor","Observação"]];
+  rotina.habits.forEach(h=>{
+    Object.keys(h.log||{}).sort().forEach(ds=>rows.push(["Hábito", h.name, ds, "Concluído", (h.notes&&h.notes[ds])||""]));
+  });
+  Object.keys(rotina.waterLog||{}).sort().forEach(ds=>{
+    rows.push(["Água","Água do dia", ds, rotina.waterLog[ds]+"ml", rotina.waterLog[ds]>=rotina.waterGoal?"Meta batida":"Não bateu a meta"]);
+  });
+  rotina.tasks.forEach(t=>{
+    Object.keys(t.done||{}).sort().forEach(ds=>rows.push(["Tarefa", t.name, ds, "Concluída", ""]));
+  });
+  Object.entries(rotina.autoTaskDone||{}).forEach(([k,v])=>{
+    if(v&&v.date) rows.push(["Área", v.text||"", v.date, "Concluída", v.time||""]);
+  });
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
+  downloadCSV("log-pose-rotina-historico.csv", csv);
+}
+function exportRotinaPDF(){
+  if(!window.jspdf){ alert("Não consegui carregar o gerador de PDF. Verifique sua conexão e tente de novo."); return; }
+  const doc=new window.jspdf.jsPDF();
+  let y=15;
+  doc.setFontSize(16); doc.text("Log Pose — Histórico de Rotina", 14, y); y+=10;
+  doc.setFontSize(10);
+  function addLine(txt){ if(y>280){ doc.addPage(); y=15; } doc.text(String(txt).slice(0,110), 14, y); y+=6; }
+  addLine("Hábitos:");
+  if(!rotina.habits.length) addLine("  (nenhum hábito ainda)");
+  rotina.habits.forEach(h=>{
+    const days=Object.keys(h.log||{}).sort();
+    if(!days.length){ addLine(`  ${h.name}: nenhum dia marcado`); return; }
+    days.forEach(ds=>addLine(`  ${ds} — ${h.name}${h.notes&&h.notes[ds]?": "+h.notes[ds]:""}`));
+  });
+  y+=4; addLine("Água:");
+  const waterDays=Object.keys(rotina.waterLog||{}).sort();
+  if(!waterDays.length) addLine("  (nenhum registro ainda)");
+  waterDays.forEach(ds=>addLine(`  ${ds} — ${rotina.waterLog[ds]}ml ${rotina.waterLog[ds]>=rotina.waterGoal?"(meta batida)":""}`));
+  y+=4; addLine("Tarefas concluídas:");
+  let anyTask=false;
+  rotina.tasks.forEach(t=>{ Object.keys(t.done||{}).sort().forEach(ds=>{ addLine(`  ${ds} — ${t.name}`); anyTask=true; }); });
+  if(!anyTask) addLine("  (nenhuma ainda)");
+  doc.save("log-pose-rotina-historico.pdf");
+}
 
 // ───────── ROTINA: CRONÔMETRO (estado só de UI, não persiste) ─────────
 let swSeconds=0, swRunning=false, swInterval=null;
@@ -1627,8 +1704,10 @@ let agendaViewMode="tomorrow";
 let activeAreaId=null;
 let waterHistScale="days";
 let routineHistScale="days";
-let dashRangeIdx=0;
+let dashCustomN=7, dashCustomUnit="days";
+let compareHabitA=null, compareHabitB=null;
 let expandedHabitId=null;
+let expandedGoalId=null;
 function renderRotina(c){
   const now=new Date();
   const tToday=tasksToday(), aToday=autoTasksToday();
@@ -1778,9 +1857,25 @@ function renderRotina(c){
     <div class="card" style="margin-bottom:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px">
         <p class="card-title" style="margin:0">Dashboard</p>
-        <select id="rtDashRange">${DASH_RANGES.map((r,i)=>`<option value="${i}" ${i===dashRangeIdx?"selected":""}>${r.label}</option>`).join("")}</select>
+        <div style="display:flex;gap:8px">
+          <button class="ghost-row-btn" id="rtExportCsv">⬇ CSV</button>
+          <button class="ghost-row-btn" id="rtExportPdf">⬇ PDF</button>
+        </div>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">O quanto você vem cumprindo, no período escolhido.</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">O quanto você vem cumprindo — escolha qualquer período, dia a dia.</p>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <span style="font-size:12px;color:var(--muted)">Últimos</span>
+        <input type="number" id="rtDashN" min="1" max="365" value="${dashCustomN}" style="width:70px;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--paper);color:var(--text)">
+        <select id="rtDashUnit" style="border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--paper);color:var(--text)">
+          <option value="days" ${dashCustomUnit==="days"?"selected":""}>dia(s)</option>
+          <option value="weeks" ${dashCustomUnit==="weeks"?"selected":""}>semana(s)</option>
+          <option value="months" ${dashCustomUnit==="months"?"selected":""}>mês(es)</option>
+        </select>
+        <button class="ghost-row-btn" id="rtDashApply">Aplicar</button>
+        <span style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">
+          ${DASH_QUICK_PICKS.map(q=>`<button class="ghost-row-btn" data-quick="${q.n}|${q.unit}">${q.label}</button>`).join("")}
+        </span>
+      </div>
       <div class="kpi-grid" style="margin-bottom:16px" id="rtDashKpis"></div>
       <div class="chart-wrap" style="height:220px"><canvas id="rtDashChart"></canvas></div>
       <div class="grid2" style="margin-top:18px;margin-bottom:0">
@@ -1792,6 +1887,20 @@ function renderRotina(c){
           <p class="card-title" style="font-size:14px">Por área</p>
           <div id="rtDashAreas"></div>
         </div>
+      </div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line)">
+        <p class="card-title" style="font-size:14px">Comparar hábitos</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <select id="rtCompareA" style="border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--paper);color:var(--text);flex:1;min-width:140px">
+            <option value="">Hábito A…</option>
+            ${rotina.habits.map(h=>`<option value="${h.id}" ${compareHabitA===h.id?"selected":""}>${esc(h.emoji)} ${esc(h.name)}</option>`).join("")}
+          </select>
+          <select id="rtCompareB" style="border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--paper);color:var(--text);flex:1;min-width:140px">
+            <option value="">Hábito B…</option>
+            ${rotina.habits.map(h=>`<option value="${h.id}" ${compareHabitB===h.id?"selected":""}>${esc(h.emoji)} ${esc(h.name)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="chart-wrap" style="height:180px"><canvas id="rtCompareChart"></canvas></div>
       </div>
     </div>
 
@@ -1899,10 +2008,16 @@ function wireRotina(c){
       <button class="icon-btn" data-hdown="${h.id}" title="Descer">↓</button>
       <button class="icon-btn del" data-hdel="${h.id}">🗑</button>
     </div>
-    ${expandedHabitId===h.id?`<div style="padding:6px 2px 14px 42px">
+    ${expandedHabitId===h.id?`<div style="padding:6px 2px 14px 42px;max-width:100%;overflow:hidden">
       ${habitFullHistory(h).length? habitFullHistory(h).map(d=>{
         const dt=new Date(d.ds+"T00:00:00");
-        return `<div class="goal-sub" style="display:flex;justify-content:space-between;gap:8px;padding:3px 0"><span>${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()} ✓${d.note?` — ${esc(d.note)}`:""}</span></div>`;
+        return `<div class="hist-row">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+            <span class="goal-sub" style="margin:0">${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()} ✓</span>
+            <button class="icon-btn del" data-hclearday="${h.id}|${d.ds}" title="Desmarcar este dia">🗑</button>
+          </div>
+          ${h.hasNotes?`<textarea class="hist-note-inp" data-hnoteedit="${h.id}|${d.ds}" placeholder="Observação desse dia...">${esc(d.note||"")}</textarea>`:(d.note?`<div class="hist-note-view">${esc(d.note)}</div>`:"")}
+        </div>`;
       }).join("") : `<p class="empty-hint">Nenhum dia marcado ainda.</p>`}
     </div>`:""}`).join("") : `<p class="empty-hint">Nenhum hábito ainda.</p>`;
   habitListEl.querySelectorAll("[data-hdot]").forEach(b=>b.onclick=()=>{ const [id,ds]=b.dataset.hdot.split("|"); toggleHabitDay(id,ds); });
@@ -1911,6 +2026,14 @@ function wireRotina(c){
   habitListEl.querySelectorAll("[data-hicon]").forEach(b=>b.onclick=()=>editHabitIcon(b.dataset.hicon));
   habitListEl.querySelectorAll("[data-hnote]").forEach(b=>b.onclick=()=>editHabitNote(b.dataset.hnote,todayStr()));
   habitListEl.querySelectorAll("[data-hexpand]").forEach(b=>b.onclick=()=>{ expandedHabitId = expandedHabitId===b.dataset.hexpand ? null : b.dataset.hexpand; renderRotina(c); });
+  habitListEl.querySelectorAll("[data-hclearday]").forEach(b=>b.onclick=()=>{ const [id,ds]=b.dataset.hclearday.split("|"); toggleHabitDay(id,ds); });
+  habitListEl.querySelectorAll("[data-hnoteedit]").forEach(t=>t.onchange=()=>{
+    const [id,ds]=t.dataset.hnoteedit.split("|");
+    const hh=rotina.habits.find(x=>x.id===id); if(!hh) return;
+    hh.notes=hh.notes||{};
+    if(t.value.trim()) hh.notes[ds]=t.value.trim(); else delete hh.notes[ds];
+    scheduleSave();
+  });
   habitListEl.querySelectorAll("[data-hup]").forEach(b=>b.onclick=()=>moveHabit(b.dataset.hup,-1));
   habitListEl.querySelectorAll("[data-hdown]").forEach(b=>b.onclick=()=>moveHabit(b.dataset.hdown,1));
   document.getElementById("rtHabitIconSuggest").innerHTML = HABIT_ICON_SUGGESTIONS.map(e=>`<button type="button" data-picon="${e}">${e}</button>`).join("");
@@ -2043,13 +2166,14 @@ function wireRotina(c){
     const p = g.target? Math.round(current/g.target*100) : 0;
     const barW = Math.min(100,p);
     return `<div class="goal-item">
-      <div class="goal-item-hd"><span>${esc(g.name)}</span><button class="icon-btn del" data-gdel="${g.id}">🗑</button></div>
+      <div class="goal-item-hd"><span>${esc(g.name)}</span><div style="display:flex;gap:6px">${linkedHabit?`<button class="icon-btn" data-gexpand="${g.id}" title="Histórico semanal">📊</button>`:""}<button class="icon-btn del" data-gdel="${g.id}">🗑</button></div></div>
       <div class="bar-track"><div class="bar-fill" style="width:${barW}%"></div></div>
       <div class="goal-sub">
         ${linkedHabit?`<span>🔗 vinculada a ${esc(linkedHabit.emoji)} ${esc(linkedHabit.name)} — <button class="icon-btn" data-gunlink="${g.id}" style="padding:0;text-decoration:underline;color:var(--muted)">desvincular</button></span>`
           :`<button class="icon-btn" data-gminus="${g.id}" style="padding:0 4px">−</button>`}
         ${!linkedHabit?` ${current} de `:` · `}${!linkedHabit?`<button class="icon-btn" data-gtarget="${g.id}" style="padding:0;text-decoration:underline;color:var(--muted)">${g.target}</button>`:`${current} de ${g.target}`}${!linkedHabit?` <button class="icon-btn" data-gplus="${g.id}" style="padding:0 4px">＋</button>`:""} (${p}%)
       </div>
+      ${expandedGoalId===g.id && linkedHabit? `<div class="water-hist" style="margin-top:8px">${goalWeeklyHistory(g,6).map(w=>`<div class="wh-item"><div class="wh-day">${w.label}</div><div class="wh-mark ${w.pct>=100?"ok":w.pct>=50?"warn":"no"}">${w.count}/${g.target}</div></div>`).join("")}</div>` : ""}
     </div>`;
   }).join("") : `<p class="empty-hint">Nenhuma meta ainda.</p>`;
   goalListEl.querySelectorAll("[data-gdel]").forEach(b=>b.onclick=()=>deleteRotinaGoal(b.dataset.gdel));
@@ -2057,14 +2181,24 @@ function wireRotina(c){
   goalListEl.querySelectorAll("[data-gminus]").forEach(b=>b.onclick=()=>bumpRotinaGoal(b.dataset.gminus,-1));
   goalListEl.querySelectorAll("[data-gtarget]").forEach(b=>b.onclick=()=>editRotinaGoalTarget(b.dataset.gtarget));
   goalListEl.querySelectorAll("[data-gunlink]").forEach(b=>b.onclick=()=>unlinkRotinaGoal(b.dataset.gunlink));
+  goalListEl.querySelectorAll("[data-gexpand]").forEach(b=>b.onclick=()=>{ expandedGoalId = expandedGoalId===b.dataset.gexpand ? null : b.dataset.gexpand; renderRotina(c); });
   document.getElementById("rtGoalAdd").onclick=()=>{
     const inp=document.getElementById("rtGoalInp"), targetInp=document.getElementById("rtGoalTargetInp"), habitSel=document.getElementById("rtGoalHabitSel");
     if(inp.value.trim()){ addRotinaGoal(inp.value.trim(), Number(targetInp.value)||4, habitSel.value||null); inp.value=""; targetInp.value=""; habitSel.value=""; }
   };
 
   // Dashboard
-  document.getElementById("rtDashRange").onchange=e=>{ dashRangeIdx=Number(e.target.value); renderRotina(c); };
-  const dashDays=DASH_RANGES[dashRangeIdx].days;
+  document.getElementById("rtDashApply").onclick=()=>{
+    dashCustomN=Math.max(1,Number(document.getElementById("rtDashN").value)||1);
+    dashCustomUnit=document.getElementById("rtDashUnit").value;
+    renderRotina(c);
+  };
+  document.querySelectorAll("[data-quick]").forEach(b=>b.onclick=()=>{
+    const [n,unit]=b.dataset.quick.split("|"); dashCustomN=Number(n); dashCustomUnit=unit; renderRotina(c);
+  });
+  document.getElementById("rtExportCsv").onclick=exportRotinaCSV;
+  document.getElementById("rtExportPdf").onclick=exportRotinaPDF;
+  const dashDays=unitToDays(dashCustomN,dashCustomUnit);
   const stats=dashboardStats(dashDays);
   document.getElementById("rtDashKpis").innerHTML = `
     <div class="kpi"><div class="kpi-lbl">Hábitos</div><div class="kpi-val" style="color:var(--positive)">${stats.habitPct===null?"—":stats.habitPct+"%"}</div></div>
@@ -2083,6 +2217,22 @@ function wireRotina(c){
     data:{labels:trend.map(b=>b.label), datasets:[
       {label:"Hábitos %",data:trend.map(b=>b.habitPct),borderColor:t.positive,tension:.3},
       {label:"Água na meta %",data:trend.map(b=>b.waterPct),borderColor:t.accent2,tension:.3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:t.text}}},scales:{x:{ticks:{color:t.muted,maxRotation:0,autoSkip:true}},y:{min:0,max:100,ticks:{color:t.muted}}}}
+  });
+
+  // Comparar hábitos
+  document.getElementById("rtCompareA").onchange=e=>{ compareHabitA=e.target.value||null; renderRotina(c); };
+  document.getElementById("rtCompareB").onchange=e=>{ compareHabitB=e.target.value||null; renderRotina(c); };
+  if(chartRotinaCompare) chartRotinaCompare.destroy();
+  const trendA = compareHabitA? habitTrend(compareHabitA,dashDays) : [];
+  const trendB = compareHabitB? habitTrend(compareHabitB,dashDays) : [];
+  const compareLabels = trendA.length? trendA.map(b=>b.label) : trendB.map(b=>b.label);
+  chartRotinaCompare=new Chart(document.getElementById("rtCompareChart"),{
+    type:"line",
+    data:{labels:compareLabels, datasets:[
+      ...(compareHabitA?[{label:rotina.habits.find(h=>h.id===compareHabitA)?.name||"A",data:trendA.map(b=>b.pct),borderColor:t.positive,tension:.3}]:[]),
+      ...(compareHabitB?[{label:rotina.habits.find(h=>h.id===compareHabitB)?.name||"B",data:trendB.map(b=>b.pct),borderColor:t.negative,tension:.3}]:[]),
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:t.text}}},scales:{x:{ticks:{color:t.muted,maxRotation:0,autoSkip:true}},y:{min:0,max:100,ticks:{color:t.muted}}}}
   });
