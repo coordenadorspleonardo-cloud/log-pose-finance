@@ -433,7 +433,7 @@ let openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
 let wrapNames=false; // exibir nomes completos (larga a coluna) em todas as tabelas mensais
 let dashShowAllLanc=false; // mostrar todos os lançamentos do painel, não só os 8 principais
 let saveTimer=null, applyingRemote=false, unsubState=null;
-let chartDash=null, chartPie=null, chartCompLine=null, chartCompBar=null;
+let chartDash=null, chartPie=null, chartCompLine=null, chartCompBar=null, chartRotinaDash=null;
 // ── visão combinada ──
 let sharedWith=[]; // [{uid,email}] — quem eu deixo ler meus dados
 let watching=[];   // [{uid,email}] — de quem eu quero ver os dados (só leitura)
@@ -1310,7 +1310,7 @@ function habitLast7(h){
   return arr;
 }
 const HABIT_ICON_SUGGESTIONS = ["🙏","📖","⏰","🏋️","🧘","🍎","🧹","💊","🚿","📚","💧","🎯","🌙","🎧","✍️","🚭","🥗","🏃"];
-function addHabit(name,emoji){ rotina.habits.push({id:nid("hab"), emoji:emoji||"⭐", name, log:{}}); scheduleSave(); renderAll(); }
+function addHabit(name,emoji,hasNotes){ rotina.habits.push({id:nid("hab"), emoji:emoji||"⭐", name, log:{}, notes:{}, hasNotes:!!hasNotes}); scheduleSave(); renderAll(); }
 function renameHabit(id,name){ const h=rotina.habits.find(x=>x.id===id); if(h) h.name=name; scheduleSave(); }
 function editHabitIcon(id){
   const h=rotina.habits.find(x=>x.id===id); if(!h) return;
@@ -1323,6 +1323,24 @@ function toggleHabitDay(id,ds){
   h.log=h.log||{};
   if(h.log[ds]) delete h.log[ds]; else h.log[ds]=true;
   scheduleSave(); renderAll();
+}
+function editHabitNote(id,ds){
+  const h=rotina.habits.find(x=>x.id===id); if(!h) return;
+  h.notes=h.notes||{};
+  const dt=new Date(ds+"T00:00:00");
+  const v=prompt(`Observação de ${DOW_FULL[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}:`, h.notes[ds]||"");
+  if(v===null) return;
+  if(v.trim()) h.notes[ds]=v.trim(); else delete h.notes[ds];
+  scheduleSave(); renderAll();
+}
+function moveHabit(id,dir){
+  const idx=rotina.habits.findIndex(h=>h.id===id), newIdx=idx+dir;
+  if(idx<0||newIdx<0||newIdx>=rotina.habits.length) return;
+  const arr=rotina.habits; [arr[idx],arr[newIdx]]=[arr[newIdx],arr[idx]];
+  scheduleSave(); renderAll();
+}
+function habitFullHistory(h,limit){
+  return Object.keys(h.log||{}).sort().reverse().slice(0,limit||60).map(ds=>({ds, note:h.notes&&h.notes[ds]}));
 }
 
 // ───────── ROTINA: TAREFAS ─────────
@@ -1338,6 +1356,16 @@ function addTask(name,time,repeatWeekly){
 function renameTask(id,name){ const t=rotina.tasks.find(x=>x.id===id); if(t) t.name=name; scheduleSave(); }
 function retimeTask(id,time){ const t=rotina.tasks.find(x=>x.id===id); if(t) t.time=time; scheduleSave(); }
 function deleteTask(id){ rotina.tasks=rotina.tasks.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
+function moveTask(id,dir,visibleIds){
+  const list=visibleIds||rotina.tasks.map(t=>t.id);
+  const pos=list.indexOf(id), swapPos=pos+dir;
+  if(pos<0||swapPos<0||swapPos>=list.length) return;
+  const otherId=list[swapPos];
+  const idxA=rotina.tasks.findIndex(t=>t.id===id), idxB=rotina.tasks.findIndex(t=>t.id===otherId);
+  if(idxA<0||idxB<0) return;
+  const arr=rotina.tasks; [arr[idxA],arr[idxB]]=[arr[idxB],arr[idxA]];
+  scheduleSave(); renderAll();
+}
 function toggleTaskDone(id){
   const t=rotina.tasks.find(x=>x.id===id); if(!t) return;
   const ds=todayStr(); t.done=t.done||{};
@@ -1468,6 +1496,7 @@ function waterToday(){ return rotina.waterLog[todayStr()]||0; }
 function addWater(ml){ rotina.waterLog[todayStr()]=Math.min(rotina.waterGoal*2, waterToday()+ml); scheduleSave(); renderAll(); }
 function subtractWater(ml){ rotina.waterLog[todayStr()]=Math.max(0, waterToday()-ml); scheduleSave(); renderAll(); }
 function setWaterGoal(v){ rotina.waterGoal=v; scheduleSave(); renderAll(); }
+function setWaterForDate(ds,ml){ rotina.waterLog[ds]=Math.max(0,ml); scheduleSave(); renderAll(); }
 function waterLast7(){
   const arr=[];
   for(let i=6;i>=0;i--){ const d=addDays(new Date(),-i); arr.push({label:i===0?"Hoje":DOW_SHORT[d.getDay()], ml: rotina.waterLog[dateStr(d)]||0}); }
@@ -1524,6 +1553,71 @@ function currentWeekDates(){
   return Array.from({length:7},(_,i)=>addDays(sunday,i));
 }
 
+// ───────── ROTINA: DASHBOARD ─────────
+const DASH_RANGES = [
+  {label:"Últimos 7 dias", days:7},
+  {label:"Últimas 2 semanas", days:14},
+  {label:"Últimas 3 semanas", days:21},
+  {label:"Últimas 4 semanas", days:28},
+  {label:"Últimos 2 meses", days:60},
+  {label:"Últimos 3 meses", days:90},
+  {label:"Últimos 6 meses", days:180},
+  {label:"Último ano", days:365},
+];
+function rangeDates(days){ const arr=[]; for(let i=days-1;i>=0;i--) arr.push(addDays(new Date(),-i)); return arr; }
+function dashboardStats(days){
+  const dates=rangeDates(days), dateStrs=dates.map(dateStr);
+  const habitPct = rotina.habits.length ? Math.round(
+    dateStrs.reduce((s,ds)=>s+(rotina.habits.filter(h=>h.log&&h.log[ds]).length/rotina.habits.length),0)/dateStrs.length*100
+  ) : null;
+  const perHabit = rotina.habits.map(h=>{
+    const done=dateStrs.filter(ds=>h.log&&h.log[ds]).length;
+    return {name:h.name, emoji:h.emoji, pct:Math.round(done/dateStrs.length*100)};
+  });
+  const waterDaysWithData = dateStrs.filter(ds=>ds in rotina.waterLog).length;
+  const waterMet = dateStrs.filter(ds=>(rotina.waterLog[ds]||0)>=rotina.waterGoal).length;
+  const waterPct = Math.round(waterMet/dateStrs.length*100);
+  const perArea = rotina.areas.map(a=>{
+    let scheduledDays=0, doneDays=0;
+    dates.forEach(d=>{
+      const ds=dateStr(d), wd=d.getDay();
+      const scheduled=rotina.routineItems.filter(r=>r.areaId===a.id && r.weekday===wd && itemValidToday(r,ds));
+      if(!scheduled.length) return;
+      scheduledDays++;
+      if(scheduled.every(r=>rotina.autoTaskDone[ds+"|"+a.id+"|"+r.id])) doneDays++;
+    });
+    return {name:a.name, emoji:a.emoji, color:a.color, pct: scheduledDays?Math.round(doneDays/scheduledDays*100):null};
+  });
+  const repeatTasks = rotina.tasks.filter(t=>t.repeatWeekly);
+  const taskPct = repeatTasks.length ? Math.round(
+    dates.reduce((s,d)=>{
+      const wd=d.getDay(), ds=dateStr(d);
+      const dueToday=repeatTasks.filter(t=>t.weekday===wd);
+      if(!dueToday.length) return s;
+      return s + dueToday.filter(t=>t.done&&t.done[ds]).length/dueToday.length;
+    },0) / dates.filter(d=>repeatTasks.some(t=>t.weekday===d.getDay())).length * 100
+  ) || 0 : null;
+  return {habitPct, perHabit, waterPct, waterDaysWithData, perArea, taskPct, dates, dateStrs};
+}
+function dashboardTrend(days){
+  const dates=rangeDates(days);
+  const bucketSize = days>180?30 : days>28?7 : 1;
+  const buckets=[];
+  for(let i=0;i<dates.length;i+=bucketSize){
+    const slice=dates.slice(i,i+bucketSize);
+    const dsSlice=slice.map(dateStr);
+    const habitPct = rotina.habits.length ? Math.round(
+      dsSlice.reduce((s,ds)=>s+(rotina.habits.filter(h=>h.log&&h.log[ds]).length/rotina.habits.length),0)/dsSlice.length*100
+    ) : 0;
+    const waterPct = Math.round(dsSlice.filter(ds=>(rotina.waterLog[ds]||0)>=rotina.waterGoal).length/dsSlice.length*100);
+    const label = bucketSize===1 ? `${slice[0].getDate()}/${slice[0].getMonth()+1}`
+      : bucketSize===7 ? `${slice[0].getDate()}/${slice[0].getMonth()+1}`
+      : slice[0].toLocaleDateString("pt-BR",{month:"short"}).replace(".","");
+    buckets.push({label, habitPct, waterPct});
+  }
+  return buckets;
+}
+
 // ───────── ROTINA: CRONÔMETRO (estado só de UI, não persiste) ─────────
 let swSeconds=0, swRunning=false, swInterval=null;
 function fmtSwTime(s){ const m=String(Math.floor(s/60)).padStart(2,"0"), sec=String(s%60).padStart(2,"0"); return m+":"+sec; }
@@ -1533,6 +1627,8 @@ let agendaViewMode="tomorrow";
 let activeAreaId=null;
 let waterHistScale="days";
 let routineHistScale="days";
+let dashRangeIdx=0;
+let expandedHabitId=null;
 function renderRotina(c){
   const now=new Date();
   const tToday=tasksToday(), aToday=autoTasksToday();
@@ -1577,6 +1673,9 @@ function renderRotina(c){
           <input type="text" id="rtHabitInp" placeholder="Novo hábito">
           <button id="rtHabitAdd">＋ Adicionar</button>
         </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:8px;cursor:pointer">
+          <input type="checkbox" id="rtHabitHasNotes"> Incluir campo de observação diária (pra anotar o que fez naquele dia)
+        </label>
         <div class="icon-suggest" id="rtHabitIconSuggest"></div>
       </div>
     </div>
@@ -1615,6 +1714,11 @@ function renderRotina(c){
             </div>
             <div class="goal-row">Meta diária: <span id="rtWaterGoalTxt2"></span> <button id="rtWaterGoalEdit">editar</button></div>
           </div>
+        </div>
+        <div class="add-row" style="margin-top:12px">
+          <input type="date" id="rtWaterEditDate" max="${todayStr()}">
+          <input type="number" id="rtWaterEditVal" placeholder="ml daquele dia">
+          <button id="rtWaterEditSave">Salvar dia anterior</button>
         </div>
         <p style="font-size:12px;color:var(--muted);margin:14px 0 4px">Histórico:</p>
         <div class="segmented" id="rtWaterHistSeg">
@@ -1671,6 +1775,26 @@ function renderRotina(c){
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+        <p class="card-title" style="margin:0">Dashboard</p>
+        <select id="rtDashRange">${DASH_RANGES.map((r,i)=>`<option value="${i}" ${i===dashRangeIdx?"selected":""}>${r.label}</option>`).join("")}</select>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">O quanto você vem cumprindo, no período escolhido.</p>
+      <div class="kpi-grid" style="margin-bottom:16px" id="rtDashKpis"></div>
+      <div class="chart-wrap" style="height:220px"><canvas id="rtDashChart"></canvas></div>
+      <div class="grid2" style="margin-top:18px;margin-bottom:0">
+        <div>
+          <p class="card-title" style="font-size:14px">Por hábito</p>
+          <div id="rtDashHabits"></div>
+        </div>
+        <div>
+          <p class="card-title" style="font-size:14px">Por área</p>
+          <div id="rtDashAreas"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="grid2">
       <div class="card">
         <p class="card-title">Metas</p>
@@ -1684,18 +1808,13 @@ function renderRotina(c){
         </div>
       </div>
       <div class="card">
-        <p class="card-title">Resumo da semana</p>
-        <p style="font-size:12px;color:var(--muted);margin:0 0 14px">% de hábitos cumpridos por dia, essa semana.</p>
-        <div class="week-bars" id="rtWeekBars"></div>
-      </div>
-    </div>
-
-    <div class="grid2">
-      <div class="card">
         <p class="card-title">Mini calendário — ${MONTHS[now.getMonth()]}</p>
         <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Cor = % de hábitos cumpridos naquele dia.</p>
         <div class="cal-grid" id="rtCalGrid"></div>
       </div>
+    </div>
+
+    <div class="grid2">
       <div class="card">
         <p class="card-title">Cronômetro</p>
         <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Só cronometra — não grava histórico automaticamente.</p>
@@ -1729,6 +1848,8 @@ function wireRotina(c){
       </div>
       ${t.repeatWeekly?`<span class="src-badge repeat">🔁 semanal</span>`:""}
       <input class="time-input" data-ttime="${t.id}" value="${esc(t.time)}">
+      <button class="icon-btn" data-tup="${t.id}" title="Subir">↑</button>
+      <button class="icon-btn" data-tdown="${t.id}" title="Descer">↓</button>
       <button class="icon-btn del" data-tdel="${t.id}">🗑</button>
     </div>`;
   }).join("");
@@ -1750,6 +1871,9 @@ function wireRotina(c){
   taskListEl.querySelectorAll("[data-trn]").forEach(i=>i.onchange=()=>renameTask(i.dataset.trn,i.value));
   taskListEl.querySelectorAll("[data-ttime]").forEach(i=>i.onchange=()=>retimeTask(i.dataset.ttime,i.value));
   taskListEl.querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>deleteTask(b.dataset.tdel));
+  const tTodayIds=tToday.map(t=>t.id);
+  taskListEl.querySelectorAll("[data-tup]").forEach(b=>b.onclick=()=>moveTask(b.dataset.tup,-1,tTodayIds));
+  taskListEl.querySelectorAll("[data-tdown]").forEach(b=>b.onclick=()=>moveTask(b.dataset.tdown,1,tTodayIds));
   document.getElementById("rtTaskAdd").onclick=()=>{
     const inp=document.getElementById("rtTaskInp"), timeInp=document.getElementById("rtTaskTime"), rep=document.getElementById("rtTaskRepeat");
     if(inp.value.trim()){ addTask(inp.value.trim(), timeInp.value, rep.value==="week"); inp.value=""; timeInp.value=""; rep.value=""; }
@@ -1769,17 +1893,31 @@ function wireRotina(c){
         const dt=new Date(d.ds+"T00:00:00");
         return `<div class="dot-col"><span class="dot-lbl">${DOW_SHORT[dt.getDay()]} ${dt.getDate()}</span><button class="dot ${d.on?"on":""} ${di===6?"today":""}" data-hdot="${h.id}|${d.ds}" title="${di===6?"Hoje":""} ${DOW_FULL[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}">${d.on?"✓":""}</button></div>`;
       }).join("")}</div>
+      ${h.hasNotes?`<button class="icon-btn" data-hnote="${h.id}" title="Observação de hoje">📝</button>`:""}
+      <button class="icon-btn" data-hexpand="${h.id}" title="Ver histórico completo">${expandedHabitId===h.id?"▾":"▸"}</button>
+      <button class="icon-btn" data-hup="${h.id}" title="Subir">↑</button>
+      <button class="icon-btn" data-hdown="${h.id}" title="Descer">↓</button>
       <button class="icon-btn del" data-hdel="${h.id}">🗑</button>
-    </div>`).join("") : `<p class="empty-hint">Nenhum hábito ainda.</p>`;
+    </div>
+    ${expandedHabitId===h.id?`<div style="padding:6px 2px 14px 42px">
+      ${habitFullHistory(h).length? habitFullHistory(h).map(d=>{
+        const dt=new Date(d.ds+"T00:00:00");
+        return `<div class="goal-sub" style="display:flex;justify-content:space-between;gap:8px;padding:3px 0"><span>${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()} ✓${d.note?` — ${esc(d.note)}`:""}</span></div>`;
+      }).join("") : `<p class="empty-hint">Nenhum dia marcado ainda.</p>`}
+    </div>`:""}`).join("") : `<p class="empty-hint">Nenhum hábito ainda.</p>`;
   habitListEl.querySelectorAll("[data-hdot]").forEach(b=>b.onclick=()=>{ const [id,ds]=b.dataset.hdot.split("|"); toggleHabitDay(id,ds); });
   habitListEl.querySelectorAll("[data-hrn]").forEach(i=>i.onchange=()=>renameHabit(i.dataset.hrn,i.value));
   habitListEl.querySelectorAll("[data-hdel]").forEach(b=>b.onclick=()=>deleteHabit(b.dataset.hdel));
   habitListEl.querySelectorAll("[data-hicon]").forEach(b=>b.onclick=()=>editHabitIcon(b.dataset.hicon));
+  habitListEl.querySelectorAll("[data-hnote]").forEach(b=>b.onclick=()=>editHabitNote(b.dataset.hnote,todayStr()));
+  habitListEl.querySelectorAll("[data-hexpand]").forEach(b=>b.onclick=()=>{ expandedHabitId = expandedHabitId===b.dataset.hexpand ? null : b.dataset.hexpand; renderRotina(c); });
+  habitListEl.querySelectorAll("[data-hup]").forEach(b=>b.onclick=()=>moveHabit(b.dataset.hup,-1));
+  habitListEl.querySelectorAll("[data-hdown]").forEach(b=>b.onclick=()=>moveHabit(b.dataset.hdown,1));
   document.getElementById("rtHabitIconSuggest").innerHTML = HABIT_ICON_SUGGESTIONS.map(e=>`<button type="button" data-picon="${e}">${e}</button>`).join("");
   document.getElementById("rtHabitIconSuggest").querySelectorAll("[data-picon]").forEach(b=>b.onclick=()=>{ document.getElementById("rtHabitIcon").value=b.dataset.picon; });
   document.getElementById("rtHabitAdd").onclick=()=>{
-    const inp=document.getElementById("rtHabitInp"), iconInp=document.getElementById("rtHabitIcon");
-    if(inp.value.trim()){ addHabit(inp.value.trim(), iconInp.value.trim()); inp.value=""; iconInp.value=""; }
+    const inp=document.getElementById("rtHabitInp"), iconInp=document.getElementById("rtHabitIcon"), notesInp=document.getElementById("rtHabitHasNotes");
+    if(inp.value.trim()){ addHabit(inp.value.trim(), iconInp.value.trim(), notesInp.checked); inp.value=""; iconInp.value=""; notesInp.checked=false; }
   };
 
   // Agenda
@@ -1815,6 +1953,10 @@ function wireRotina(c){
   document.getElementById("rtWaterOther").onclick=()=>{ const v=prompt("Quantos ml?"); if(v&&!isNaN(v)) addWater(Number(v)); };
   document.getElementById("rtWaterRemove").onclick=()=>{ const v=prompt("Quantos ml remover de hoje?"); if(v&&!isNaN(v)) subtractWater(Number(v)); };
   document.getElementById("rtWaterGoalEdit").onclick=()=>{ const v=prompt("Nova meta diária (ml):", rotina.waterGoal); if(v&&!isNaN(v)) setWaterGoal(Number(v)); };
+  document.getElementById("rtWaterEditSave").onclick=()=>{
+    const dateInp=document.getElementById("rtWaterEditDate"), valInp=document.getElementById("rtWaterEditVal");
+    if(dateInp.value && valInp.value!==""){ setWaterForDate(dateInp.value, Number(valInp.value)); dateInp.value=""; valInp.value=""; }
+  };
   function markClass(p){ return p>=100?"ok":p>=70?"warn":"no"; }
   document.querySelectorAll("#rtWaterHistSeg button").forEach(b=>b.onclick=()=>{ waterHistScale=b.dataset.scale; renderRotina(c); });
   const whEl=document.getElementById("rtWaterHist");
@@ -1920,11 +2062,30 @@ function wireRotina(c){
     if(inp.value.trim()){ addRotinaGoal(inp.value.trim(), Number(targetInp.value)||4, habitSel.value||null); inp.value=""; targetInp.value=""; habitSel.value=""; }
   };
 
-  // Resumo da semana
-  const weekDates=currentWeekDates();
-  const pcts=weekDates.map(d=>dayHabitPct(dateStr(d))||0);
-  document.getElementById("rtWeekBars").innerHTML = pcts.map((p,i)=>`
-    <div class="week-bar-col"><div class="week-bar" style="height:${Math.max(p,3)}%"></div><div class="week-bar-lbl">${DOW_SHORT[i]}</div></div>`).join("");
+  // Dashboard
+  document.getElementById("rtDashRange").onchange=e=>{ dashRangeIdx=Number(e.target.value); renderRotina(c); };
+  const dashDays=DASH_RANGES[dashRangeIdx].days;
+  const stats=dashboardStats(dashDays);
+  document.getElementById("rtDashKpis").innerHTML = `
+    <div class="kpi"><div class="kpi-lbl">Hábitos</div><div class="kpi-val" style="color:var(--positive)">${stats.habitPct===null?"—":stats.habitPct+"%"}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Água (dias na meta)</div><div class="kpi-val" style="color:var(--accent2)">${stats.waterPct}%</div></div>
+    <div class="kpi"><div class="kpi-lbl">Tarefas recorrentes</div><div class="kpi-val">${stats.taskPct===null?"—":stats.taskPct+"%"}</div></div>
+  `;
+  document.getElementById("rtDashHabits").innerHTML = stats.perHabit.length? stats.perHabit.map(h=>`
+    <div class="goal-sub" style="display:flex;justify-content:space-between;padding:4px 0"><span>${esc(h.emoji)} ${esc(h.name)}</span><strong>${h.pct}%</strong></div>`).join("") : `<p class="empty-hint">Nenhum hábito ainda.</p>`;
+  document.getElementById("rtDashAreas").innerHTML = stats.perArea.length? stats.perArea.map(a=>`
+    <div class="goal-sub" style="display:flex;justify-content:space-between;padding:4px 0"><span>${esc(a.emoji)} ${esc(a.name)}</span><strong>${a.pct===null?"—":a.pct+"%"}</strong></div>`).join("") : `<p class="empty-hint">Nenhuma área ainda.</p>`;
+  const trend=dashboardTrend(dashDays);
+  if(chartRotinaDash) chartRotinaDash.destroy();
+  const t=theme();
+  chartRotinaDash=new Chart(document.getElementById("rtDashChart"),{
+    type:"line",
+    data:{labels:trend.map(b=>b.label), datasets:[
+      {label:"Hábitos %",data:trend.map(b=>b.habitPct),borderColor:t.positive,tension:.3},
+      {label:"Água na meta %",data:trend.map(b=>b.waterPct),borderColor:t.accent2,tension:.3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:t.text}}},scales:{x:{ticks:{color:t.muted,maxRotation:0,autoSkip:true}},y:{min:0,max:100,ticks:{color:t.muted}}}}
+  });
 
   // Mini calendário
   const now=new Date();
