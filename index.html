@@ -78,6 +78,15 @@ td{padding:3px 4px;font-size:12.5px;border-top:1px solid var(--line);}
 .mtable-scroll{overflow-x:auto;}
 .mtable th:nth-child(1),.mtable td:nth-child(1){position:sticky;left:0;z-index:2;background:var(--card);}
 .mtable th:nth-child(2),.mtable td:nth-child(2){position:sticky;left:26px;z-index:2;background:var(--card);box-shadow:2px 0 5px -3px rgba(0,0,0,.25);}
+.mtable td.num{position:relative;}
+.cell-swatch{position:absolute;top:1px;right:1px;width:8px;height:8px;border-radius:50%;border:1px solid var(--line);background:transparent;padding:0;cursor:pointer;}
+.cell-swatch:hover{border-color:var(--accent2);}
+.cc-panel{position:fixed;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none;flex-wrap:wrap;gap:6px;width:172px;}
+.cc-panel.open{display:flex;}
+.cc-swatch{width:24px;height:24px;border-radius:6px;border:1px solid var(--line);cursor:pointer;padding:0;}
+.cc-swatch.cc-clear{display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);background:var(--paper);}
+.cc-custom{position:relative;border-radius:6px;overflow:hidden;cursor:pointer;}
+.cc-custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0;}
 td.num{text-align:right;font-family:var(--mono);}
 tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono);}
 .cell-input{border:none;background:transparent;width:100%;font-family:inherit;font-size:13px;padding:5px 4px;color:var(--text);}
@@ -300,6 +309,7 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
       </div>
     </div>
   </header>
+  <div class="cc-panel" id="cellColorPanel"></div>
   <div class="toplevel" id="toplevelNav">
     <button id="btnTopRotina">Rotina</button>
     <button id="btnTopFin">Finanças</button>
@@ -377,10 +387,10 @@ const luminance = hex => {
 };
 let uidCounter=1;
 const nid = p => `${p||"it"}-${uidCounter++}-${Math.random().toString(36).slice(2,7)}`;
-const mk = (name,group,values) => ({id:nid(group||"it"),name,group:group||null,recurring:false,values:(values&&values.length===12)?values.slice():Array(12).fill(0)});
+const mk = (name,group,values) => ({id:nid(group||"it"),name,group:group||null,recurring:false,values:(values&&values.length===12)?values.slice():Array(12).fill(0),cellColors:{}});
 const groupColor = (colorsArr,key) => { const i=groups.findIndex(g=>g.key===key); return (colorsArr||DEFAULT_CHART_COLORS)[i>=0?i:colorsArr.length-1]; };
 const groupLabel = key => (groups.find(g=>g.key===key)||{}).label || "Outros";
-const blankYear = () => ({income:[],patrimonio:[],expenses:[],debtors:[]});
+const blankYear = () => ({income:[],patrimonio:[],expenses:[],debtors:[],totalColors:{}});
 const parseDueDay = name => {
   const m = name.match(/venc\.?\s*(\d{1,2})/i) || name.match(/dia\s*(\d{1,2})/i);
   if(!m) return null;
@@ -756,6 +766,51 @@ function deleteGoal(id){
   scheduleSave(); renderAll();
 }
 function setChartColor(i,v){ chartColors=chartColors.map((c,idx)=>idx===i?v:c); scheduleSave(); renderAll(); renderAppearancePanel(); }
+function setCellColor(section,itemId,monthIdx,color){
+  const y=years[year];
+  y[section]=y[section].map(it=>{
+    if(it.id!==itemId) return it;
+    const cc={...(it.cellColors||{})};
+    if(color) cc[monthIdx]=color; else delete cc[monthIdx];
+    return {...it,cellColors:cc};
+  });
+  scheduleSave(); renderAll();
+}
+function setTotalCellColor(section,monthIdx,color){
+  const y=years[year];
+  const tc={...(y.totalColors||{})};
+  const secColors={...(tc[section]||{})};
+  if(color) secColors[monthIdx]=color; else delete secColors[monthIdx];
+  tc[section]=secColors;
+  y.totalColors=tc;
+  scheduleSave(); renderAll();
+}
+const CELL_COLOR_PRESETS=["#FDE68A","#BBF7D0","#BFDBFE","#FBCFE8","#FED7AA","#E5E7EB","#FCA5A5","#C7D2FE"];
+let cellColorTarget=null;
+function openCellColorPanel(anchorEl,target){
+  cellColorTarget=target;
+  const panel=document.getElementById("cellColorPanel");
+  panel.innerHTML=CELL_COLOR_PRESETS.map(c=>`<button class="cc-swatch" data-cc="${c}" style="background:${c}" title="Pintar com esta cor"></button>`).join("")
+    + `<button class="cc-swatch cc-clear" data-cc="" title="Remover cor">✕</button>`
+    + `<label class="cc-custom cc-swatch" title="Escolher outra cor"><input type="color" value="#B8963E" data-cccustom="1"></label>`;
+  panel.querySelectorAll("[data-cc]").forEach(b=>b.onclick=()=>{ applyCellColor(b.dataset.cc||null); closeCellColorPanel(); });
+  panel.querySelector("[data-cccustom]").oninput=e=>{ applyCellColor(e.target.value); closeCellColorPanel(); };
+  const r=anchorEl.getBoundingClientRect();
+  const panelWidth=172;
+  let left=r.left-80; left=Math.max(8,Math.min(left,window.innerWidth-panelWidth-8));
+  panel.style.top=(r.bottom+6)+"px";
+  panel.style.left=left+"px";
+  panel.classList.add("open");
+}
+function closeCellColorPanel(){ document.getElementById("cellColorPanel").classList.remove("open"); cellColorTarget=null; }
+function applyCellColor(color){
+  if(!cellColorTarget) return;
+  const {kind,section,itemId,month}=cellColorTarget;
+  if(kind==="item") setCellColor(section,itemId,month,color);
+  else setTotalCellColor(section,month,color);
+}
+document.addEventListener("click",()=>closeCellColorPanel());
+document.getElementById("cellColorPanel").addEventListener("click",e=>e.stopPropagation());
 function setColor(k,v){ colors={...colors,[k]:v}; applyThemeVars(); scheduleSave(); renderShell(); renderAll(); renderAppearancePanel(); }
 
 // ───────── CÁLCULOS ─────────
@@ -909,7 +964,10 @@ function monthlyTableHTML(items,section,accent,lockedRow,extraCol){
       <td><button class="icon-btn rec ${it.recurring?"on":""}" data-rec="${it.id}" title="Repetir valor">↻</button></td>
       <td><input class="cell-input${wrapNames?" wide":""}" value="${esc(it.name)}" data-rename="${it.id}" title="${esc(it.name)}"></td>
       ${extraCol?`<td>${extraCol.render(it)}</td>`:""}
-      ${idxs.map(i=>`<td class="num"><input class="cell-input num" type="number" placeholder="0" value="${it.values[i]===0?"":it.values[i]}" data-val="${it.id}" data-month="${i}"></td>`).join("")}
+      ${idxs.map(i=>{
+        const cc=(it.cellColors&&it.cellColors[i])||"";
+        return `<td class="num" style="${cc?`background:${cc}`:""}"><input class="cell-input num" type="number" placeholder="0" value="${it.values[i]===0?"":it.values[i]}" data-val="${it.id}" data-month="${i}"><button class="cell-swatch" data-cellswatch="item|${it.id}|${i}" title="Marcar cor" style="${cc?`background:${cc};border-color:${cc}`:""}"></button></td>`;
+      }).join("")}
       ${showTotal?`<td class="num" style="font-weight:600">${fmt(rowTotal)}</td>`:""}
       <td><button class="icon-btn del" data-del="${it.id}" title="Remover">🗑</button></td>
     </tr>`;
@@ -924,10 +982,14 @@ function monthlyTableHTML(items,section,accent,lockedRow,extraCol){
       <td></td></tr>`;
   }
   if(!items.length && !lockedRow) rowsHtml=`<tr><td colspan="16" class="empty-msg">Nenhum item ainda. Adicione abaixo.</td></tr>`;
+  const totalColorsForSection=(years[year]&&years[year].totalColors&&years[year].totalColors[section])||{};
   return `<div class="mtable-scroll"><table class="mtable">
     <thead><tr><th style="width:26px"></th><th>Item</th>${extraCol?`<th>${extraCol.label}</th>`:""}${idxs.map(i=>`<th style="text-align:right">${MONTHS[i]}</th>`).join("")}${showTotal?`<th style="text-align:right">Total</th>`:""}<th style="width:28px"></th></tr></thead>
     <tbody>${rowsHtml}</tbody>
-    <tfoot><tr><td></td><td>Total</td>${extraCol?`<td></td>`:""}${idxs.map(i=>`<td class="num" style="color:${accent}">${fmt(totals[i])}</td>`).join("")}${showTotal?`<td class="num" style="color:${accent}">${fmt(sumArr(totals))}</td>`:""}<td></td></tr></tfoot>
+    <tfoot><tr><td></td><td>Total</td>${extraCol?`<td></td>`:""}${idxs.map(i=>{
+      const tc=totalColorsForSection[i]||"";
+      return `<td class="num" style="color:${accent};${tc?`background:${tc}`:""}">${fmt(totals[i])}<button class="cell-swatch" data-cellswatch="total|${i}" title="Marcar cor" style="${tc?`background:${tc};border-color:${tc}`:""}"></button></td>`;
+    }).join("")}${showTotal?`<td class="num" style="color:${accent}">${fmt(sumArr(totals))}</td>`:""}<td></td></tr></tfoot>
   </table></div>`;
 }
 let mtableScrollPos={}; // containerId -> scrollLeft, pra não perder a posição ao editar um valor
@@ -960,6 +1022,14 @@ function wireMonthlyTable(container,section,extraCol){
     };
   });
   container.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ if(confirm("Remover item?")) deleteItem(section,b.dataset.del); });
+  container.querySelectorAll("[data-cellswatch]").forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      const parts=b.dataset.cellswatch.split("|");
+      if(parts[0]==="item") openCellColorPanel(b,{kind:"item",section,itemId:parts[1],month:Number(parts[2])});
+      else openCellColorPanel(b,{kind:"total",section,month:Number(parts[1])});
+    };
+  });
   if(extraCol) extraCol.wire(container);
   const scrollWrap=container.querySelector(".mtable-scroll");
   if(scrollWrap){
