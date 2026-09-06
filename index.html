@@ -453,6 +453,7 @@ let tab="dashboard";
 let openGroups=Object.fromEntries(groups.map(g=>[g.key,true]));
 let wrapNames=false; // exibir nomes completos (larga a coluna) em todas as tabelas mensais
 let uiIcons={rotina:"🔄",financas:"💰",streak:"🔥"}; // emojis customizáveis (aba Rotina, aba Finanças, sequência de hábitos)
+let despesasViewMode="grouped"; // "grouped" (por categoria) | "flat" (lista única sem divisões)
 let dashShowAllLanc=false; // mostrar todos os lançamentos do painel, não só os 8 principais
 let saveTimer=null, applyingRemote=false, unsubState=null;
 let chartDash=null, chartPie=null, chartCompLine=null, chartCompBar=null, chartRotinaDash=null, chartRotinaCompare=null;
@@ -605,6 +606,7 @@ function startDataListener(uid){
       watching=d.watching||[];
       wrapNames=d.wrapNames||false;
       uiIcons={rotina:"🔄",financas:"💰",streak:"🔥",...(d.uiIcons||{})};
+      despesasViewMode=d.despesasViewMode==="flat"?"flat":"grouped";
       appSection=d.appSection||"rotina";
       rotina={...defaultRotina(), ...(d.rotina||{})};
       migrateRotinaAreas();
@@ -631,7 +633,7 @@ function scheduleSave(){
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     const stateRef=doc(db,"users",user.uid,"data","state");
-    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames,uiIcons,appSection,rotina}).catch(()=>{});
+    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames,uiIcons,despesasViewMode,appSection,rotina}).catch(()=>{});
   },500);
 }
 
@@ -965,6 +967,65 @@ function wireMonthlyTable(container,section,extraCol){
     scrollWrap.onscroll=()=>{ if(container.id) mtableScrollPos[container.id]=scrollWrap.scrollLeft; };
   }
 }
+
+// ───────── AUTOSSOMA: somar um item específico num período (atravessa anos, casa por nome) ─────────
+function distinctItemNames(section){
+  const set=new Set();
+  Object.values(years).forEach(y=>(y[section]||[]).forEach(it=>{ if(it.name&&it.name.trim()) set.add(it.name); }));
+  return [...set].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+}
+function sumItemAcrossRange(section,itemName,fromY,fromM,toY,toM){
+  let total=0,count=0;
+  const fromKey=fromY*12+fromM, toKey=toY*12+toM;
+  const lo=Math.min(fromKey,toKey), hi=Math.max(fromKey,toKey);
+  const target=itemName.trim().toLowerCase();
+  Object.keys(years).forEach(y=>{
+    const yNum=Number(y);
+    (years[y][section]||[]).forEach(it=>{
+      if((it.name||"").trim().toLowerCase()!==target) return;
+      it.values.forEach((v,mIdx)=>{
+        const key=yNum*12+mIdx;
+        if(key>=lo&&key<=hi&&Number(v)){ total+=Number(v)||0; count++; }
+      });
+    });
+  });
+  return {total,count};
+}
+function sumToolHTML(section,label){
+  const names=distinctItemNames(section);
+  return `<div class="card" style="margin-top:16px">
+    <p class="card-title" style="margin-bottom:10px">🧮 Somar ${label} num período específico</p>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Some só os valores de UM item — não da categoria inteira — entre um mês/ano inicial e um mês/ano final. Pode passar de um ano para outro.</p>
+    <div style="display:grid;grid-template-columns:1.6fr 1fr .8fr 1fr .8fr auto;gap:8px;align-items:center">
+      <select id="${section}SumItem" style="border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--paper);color:var(--text)">
+        ${names.length?names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join(""):`<option value="">Nenhum item ainda</option>`}
+      </select>
+      <select id="${section}SumFromM" style="border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--paper);color:var(--text)">${MONTHS.map((m,i)=>`<option value="${i}" ${i===0?"selected":""}>${m}</option>`).join("")}</select>
+      <input type="number" id="${section}SumFromY" value="${REAL_YEAR}" style="border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--paper);color:var(--text);width:100%">
+      <select id="${section}SumToM" style="border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--paper);color:var(--text)">${MONTHS.map((m,i)=>`<option value="${i}" ${i===11?"selected":""}>${m}</option>`).join("")}</select>
+      <input type="number" id="${section}SumToY" value="${REAL_YEAR}" style="border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--paper);color:var(--text);width:100%">
+      <button id="${section}SumBtn" style="background:var(--ink);color:var(--onInk);border:none;border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;white-space:nowrap">Calcular</button>
+    </div>
+    <p id="${section}SumResult" style="font-family:var(--mono);font-weight:700;font-size:17px;margin:14px 0 0"></p>
+  </div>`;
+}
+function wireSumTool(section){
+  const btn=document.getElementById(`${section}SumBtn`);
+  if(!btn) return;
+  btn.onclick=()=>{
+    const item=document.getElementById(`${section}SumItem`).value;
+    const fromM=Number(document.getElementById(`${section}SumFromM`).value);
+    const fromY=Number(document.getElementById(`${section}SumFromY`).value);
+    const toM=Number(document.getElementById(`${section}SumToM`).value);
+    const toY=Number(document.getElementById(`${section}SumToY`).value);
+    const resEl=document.getElementById(`${section}SumResult`);
+    if(!item){ resEl.textContent="Nenhum item disponível pra somar."; return; }
+    const {total,count}=sumItemAcrossRange(section,item,fromY,fromM,toY,toM);
+    const lo=Math.min(fromY*12+fromM,toY*12+toM), hi=Math.max(fromY*12+fromM,toY*12+toM);
+    const loY=Math.floor(lo/12),loM=lo%12, hiY=Math.floor(hi/12),hiM=hi%12;
+    resEl.textContent=`${fmt(total)}  (${count} ${count===1?"mês lançado":"meses lançados"}, de ${MONTHS[loM]}/${loY} a ${MONTHS[hiM]}/${hiY})`;
+  };
+}
 const catExtraCol={
   label:"Categoria",
   render: it=>`<select data-catmove="${it.id}" style="font-size:11.5px;border:1px solid var(--line);border-radius:6px;padding:3px 4px;background:var(--paper);color:var(--text);max-width:140px">${groups.map(g=>`<option value="${g.key}" ${g.key===it.group?"selected":""}>${esc(g.label)}</option>`).join("")}</select>`,
@@ -1162,10 +1223,13 @@ function renderFaturamento(c){
     <div id="fatTable"></div>
     ${addRowHTML("Nova fonte de renda","fatAdd")}
     <p style="font-size:12px;color:var(--muted);margin-top:12px">🔒 "Devedores (recebido)" é somado automaticamente a partir do que você lançar na aba Devedores.</p>
-  </div>`;
+  </div>
+  <div id="incomeSumTool"></div>`;
   document.getElementById("fatTable").innerHTML=monthlyTableHTML(data().income,"income","var(--positive)",{name:"Devedores (recebido)",values:debtorsByMonth});
   wireMonthlyTable(document.getElementById("fatTable"),"income");
   wireAddRow("fatAdd",name=>addItem("income",name));
+  document.getElementById("incomeSumTool").innerHTML=sumToolHTML("income","uma fonte de renda");
+  wireSumTool("income");
 }
 
 // ───────── RENDER: DESPESAS ─────────
@@ -1184,45 +1248,70 @@ function renderDespesas(c){
   }
   html+=`<p style="font-size:11.5px;color:var(--muted);margin-top:12px">Total do ano: <strong style="color:var(--text)">${fmtFull(expenseAnnual)}</strong></p></div>`;
 
-  groups.forEach((g,gi)=>{
-    const items=data().expenses.filter(it=>it.group===g.key);
-    const spent=sumArr(items.map(it=>it.values[em]||0));
-    const color=groupColor(chartColors,g.key);
-    const subtotal=isAllMonths()?sumArr(items.map(it=>sumArr(it.values))):spent;
-    const budget=budgets[g.key]||0;
-    const pct=budget?Math.round(spent/budget*100):0;
-    const barColor=pct>100?"var(--negative)":pct>=80?"var(--accent2)":"var(--positive)";
-    html+=`<div class="group-card">
-      <div class="group-hd">
-        <span style="display:flex;align-items:center;gap:8px;font-weight:600"><label class="swatch" style="width:16px;height:16px;background:${color}"><input type="color" value="${color}" data-chartcoloridx3="${gi}"></label><button data-toggle="${g.key}" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--text);font-size:13.5px">${g.label}</button></span>
-        <button data-toggle="${g.key}" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:10px"><span style="font-family:var(--mono);font-weight:700">${fmt(subtotal)}</span><span>${openGroups[g.key]?"▾":"▸"}</span></button>
-      </div>
-      <div style="padding:0 16px 10px">
-        ${budget?`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px"><span>Meta de ${MONTHS[em]}: ${fmt(budget)} · gasto ${fmt(spent)}</span><span style="color:${barColor};font-weight:600">${pct}%</span></div><div class="budget-bar-track"><div class="budget-bar-fill" style="width:${Math.min(100,pct)}%;background:${barColor}"></div></div>`:""}
-      </div>
-      ${openGroups[g.key]?`<div style="padding:0 16px 16px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><label style="font-size:12px;color:var(--muted)">Meta mensal:</label><input type="number" data-budget="${g.key}" value="${budget||""}" placeholder="sem meta" style="width:100px;border:1px solid var(--line);border-radius:6px;padding:7px 8px;font-size:12.5px;background:var(--paper);color:var(--text)"></div>
-        <div id="groupTable-${g.key}"></div>
-        ${addRowHTML(`Novo item em "${g.label}"`,`groupAdd-${g.key}`)}
-      </div>`:""}
+  html+=`<div class="segmented" style="max-width:360px">
+    <button data-despview="grouped" class="${despesasViewMode==="grouped"?"active":""}">Por categoria</button>
+    <button data-despview="flat" class="${despesasViewMode==="flat"?"active":""}">Lista única (sem divisões)</button>
+  </div>`;
+
+  if(despesasViewMode==="flat"){
+    html+=`<div class="card" style="margin-bottom:16px">
+      <p class="card-title">Todas as despesas, sem divisão por categoria</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Mesmos itens de sempre, só que numa lista só. A categoria de cada um ainda pode ser vista/trocada na coluna "Categoria".</p>
+      <div id="flatExpTable"></div>
+      ${addRowHTML("Novo item de despesa","flatExpAdd")}
     </div>`;
-  });
+  } else {
+    groups.forEach((g,gi)=>{
+      const items=data().expenses.filter(it=>it.group===g.key);
+      const spent=sumArr(items.map(it=>it.values[em]||0));
+      const color=groupColor(chartColors,g.key);
+      const subtotal=isAllMonths()?sumArr(items.map(it=>sumArr(it.values))):spent;
+      const budget=budgets[g.key]||0;
+      const pct=budget?Math.round(spent/budget*100):0;
+      const barColor=pct>100?"var(--negative)":pct>=80?"var(--accent2)":"var(--positive)";
+      html+=`<div class="group-card">
+        <div class="group-hd">
+          <span style="display:flex;align-items:center;gap:8px;font-weight:600"><label class="swatch" style="width:16px;height:16px;background:${color}"><input type="color" value="${color}" data-chartcoloridx3="${gi}"></label><button data-toggle="${g.key}" style="background:none;border:none;cursor:pointer;font-weight:600;color:var(--text);font-size:13.5px">${g.label}</button></span>
+          <button data-toggle="${g.key}" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:10px"><span style="font-family:var(--mono);font-weight:700">${fmt(subtotal)}</span><span>${openGroups[g.key]?"▾":"▸"}</span></button>
+        </div>
+        <div style="padding:0 16px 10px">
+          ${budget?`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px"><span>Meta de ${MONTHS[em]}: ${fmt(budget)} · gasto ${fmt(spent)}</span><span style="color:${barColor};font-weight:600">${pct}%</span></div><div class="budget-bar-track"><div class="budget-bar-fill" style="width:${Math.min(100,pct)}%;background:${barColor}"></div></div>`:""}
+        </div>
+        ${openGroups[g.key]?`<div style="padding:0 16px 16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><label style="font-size:12px;color:var(--muted)">Meta mensal:</label><input type="number" data-budget="${g.key}" value="${budget||""}" placeholder="sem meta" style="width:100px;border:1px solid var(--line);border-radius:6px;padding:7px 8px;font-size:12.5px;background:var(--paper);color:var(--text)"></div>
+          <div id="groupTable-${g.key}"></div>
+          ${addRowHTML(`Novo item em "${g.label}"`,`groupAdd-${g.key}`)}
+        </div>`:""}
+      </div>`;
+    });
+  }
   html+=`<div style="background:var(--ink);color:var(--onInk);border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;font-family:var(--mono);font-weight:700">
     <span style="font-family:var(--sans);font-weight:600">${isAllMonths()?"Total de despesas no ano":`Total de despesas em ${MONTHS[em]}`}</span>
     <span>${fmtFull(isAllMonths()?expenseAnnual:expenseByMonth[em])}</span></div>`;
+  html+=`<div id="expensesSumTool"></div>`;
   c.innerHTML=html;
 
+  c.querySelectorAll("[data-despview]").forEach(b=>b.onclick=()=>{ despesasViewMode=b.dataset.despview; scheduleSave(); renderAll(); });
   c.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>{ const k=b.dataset.toggle; openGroups[k]=!openGroups[k]; renderAll(); });
   c.querySelectorAll("[data-chartcoloridx3]").forEach(inp=>inp.oninput=()=>setChartColor(Number(inp.dataset.chartcoloridx3),inp.value));
   c.querySelectorAll("[data-budget]").forEach(inp=>inp.onchange=()=>{ budgets[inp.dataset.budget]=inp.value===""?0:Number(inp.value); scheduleSave(); renderAll(); });
-  groups.forEach(g=>{
-    if(!openGroups[g.key]) return;
-    const items=data().expenses.filter(it=>it.group===g.key);
-    const tableDiv=document.getElementById("groupTable-"+g.key);
-    tableDiv.innerHTML=monthlyTableHTML(items,"expenses",groupColor(chartColors,g.key),null,catExtraCol);
+  if(despesasViewMode==="flat"){
+    const tableDiv=document.getElementById("flatExpTable");
+    tableDiv.innerHTML=monthlyTableHTML(data().expenses,"expenses","var(--negative)",null,catExtraCol);
     wireMonthlyTable(tableDiv,"expenses",catExtraCol);
-    wireAddRow("groupAdd-"+g.key,name=>addItem("expenses",name,g.key));
-  });
+    wireAddRow("flatExpAdd",name=>addItem("expenses",name,null));
+  } else {
+    groups.forEach(g=>{
+      if(!openGroups[g.key]) return;
+      const items=data().expenses.filter(it=>it.group===g.key);
+      const tableDiv=document.getElementById("groupTable-"+g.key);
+      tableDiv.innerHTML=monthlyTableHTML(items,"expenses",groupColor(chartColors,g.key),null,catExtraCol);
+      wireMonthlyTable(tableDiv,"expenses",catExtraCol);
+      wireAddRow("groupAdd-"+g.key,name=>addItem("expenses",name,g.key));
+    });
+  }
+  document.getElementById("expensesSumTool").innerHTML=sumToolHTML("expenses","uma despesa");
+  wireSumTool("expenses");
 }
 
 // ───────── RENDER: PATRIMÔNIO ─────────
@@ -1233,11 +1322,14 @@ function renderPatrimonio(c){
     ${addRowHTML("Nova reserva ou investimento","patAdd")}
     <p style="font-size:12px;color:var(--muted);margin-top:12px">${isAllMonths()?`O total de cada linha é a soma dos valores lançados no ano ${year}.`:`Mostrando apenas ${MONTHS[effectiveMonth()]}.`}</p>
     <div id="goalsPanel" style="margin-top:26px"></div>
-  </div>`;
+  </div>
+  <div id="patrimonioSumTool"></div>`;
   document.getElementById("patTable").innerHTML=monthlyTableHTML(data().patrimonio,"patrimonio","var(--accent2)",null,goalExtraCol);
   wireMonthlyTable(document.getElementById("patTable"),"patrimonio",goalExtraCol);
   wireAddRow("patAdd",name=>addItem("patrimonio",name));
   renderGoalsPanel(document.getElementById("goalsPanel"));
+  document.getElementById("patrimonioSumTool").innerHTML=sumToolHTML("patrimonio","um item de patrimônio");
+  wireSumTool("patrimonio");
 }
 function renderGoalsPanel(el){
   el.innerHTML=`<p class="card-title">🎯 Metas de poupança</p>
@@ -1268,10 +1360,12 @@ function renderGoalsPanel(el){
 
 // ───────── RENDER: DEVEDORES ─────────
 function renderDevedores(c){
-  c.innerHTML=`<div class="card"><p class="card-title">Pessoas e pendências</p><div id="devTable"></div>${addRowHTML("Nome da pessoa","devAdd")}</div>`;
+  c.innerHTML=`<div class="card"><p class="card-title">Pessoas e pendências</p><div id="devTable"></div>${addRowHTML("Nome da pessoa","devAdd")}</div><div id="debtorsSumTool"></div>`;
   document.getElementById("devTable").innerHTML=monthlyTableHTML(data().debtors,"debtors","var(--muted)");
   wireMonthlyTable(document.getElementById("devTable"),"debtors");
   wireAddRow("devAdd",name=>addItem("debtors",name));
+  document.getElementById("debtorsSumTool").innerHTML=sumToolHTML("debtors","uma pessoa/devedor");
+  wireSumTool("debtors");
 }
 
 // ───────── RENDER: COMPARAR ─────────
