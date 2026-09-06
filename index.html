@@ -108,7 +108,9 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:14px;}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
 .kpi-lbl{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;margin-bottom:6px;}
-.kpi-val{font-family:var(--mono);font-weight:600;font-size:18px;}
+.kpi-val{font-family:var(--mono);font-weight:600;font-size:18px;color:var(--text);}
+.dark-select{background:#ffffff14;color:var(--onInk);border:1px solid #ffffff33;border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;}
+.dark-select option{background:#FFFFFF;color:#1B2430;}
 .swatch{position:relative;display:inline-flex;border-radius:50%;cursor:pointer;border:1.5px solid var(--line);overflow:hidden;flex-shrink:0;}
 .swatch input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0;}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-bottom:20px;}
@@ -2164,7 +2166,8 @@ function renderRotina(c){
   const next=nextAgendaItem();
   const waterNow=waterToday(), waterGoalVal=rotina.waterGoal||1;
   const waterDiff=waterGoalVal-waterNow;
-  const waterKpiVal = waterDiff<0 ? `Meta batida! +${-waterDiff}ml` : waterDiff===0 ? "Meta batida! 🎉" : `Faltam ${waterDiff}ml`;
+  const waterPctMissing=Math.max(0,100-Math.round(waterNow/waterGoalVal*100));
+  const waterKpiVal = waterDiff<0 ? `Meta batida! +${-waterDiff}ml` : waterDiff===0 ? "Meta batida! 🎉" : `Faltam ${waterDiff}ml (${waterPctMissing}%)`;
   const streakChips=sortedHabitsForChips().map(h=>`<span class="streak-chip">${esc(h.emoji)} ${esc(h.name.split(" ").slice(0,2).join(" "))} ${uiIcons.streak}${habitStreak(h)}</span>`).join("");
 
   c.innerHTML = `
@@ -2177,7 +2180,7 @@ function renderRotina(c){
       </div>
       ${rotina.habits.length?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:16px;margin-bottom:8px">
         <p class="kpi-lbl" style="margin:0">Sequência de cada hábito</p>
-        <select id="rtStreakSortSel" style="background:#ffffff14;color:var(--onInk);border:1px solid #ffffff33;border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer">
+        <select id="rtStreakSortSel" class="dark-select">
           <option value="streak" ${streakChipSort==="streak"?"selected":""}>Maior sequência primeiro</option>
           <option value="period" ${streakChipSort==="period"?"selected":""}>Manhã / Tarde / Noite</option>
           <option value="alpha" ${streakChipSort==="alpha"?"selected":""}>Ordem alfabética</option>
