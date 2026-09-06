@@ -633,6 +633,7 @@ function startDataListener(uid){
       uiIcons={rotina:"🔄",financas:"💰",streak:"🔥",...(d.uiIcons||{})};
       despesasViewMode=d.despesasViewMode==="flat"?"flat":"grouped";
       habitGroupByPeriod=!!d.habitGroupByPeriod;
+      streakChipSort=d.streakChipSort||"streak";
       appSection=d.appSection||"rotina";
       rotina={...defaultRotina(), ...(d.rotina||{})};
       migrateRotinaAreas();
@@ -659,7 +660,7 @@ function scheduleSave(){
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     const stateRef=doc(db,"users",user.uid,"data","state");
-    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames,uiIcons,despesasViewMode,habitGroupByPeriod,appSection,rotina}).catch(()=>{});
+    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames,uiIcons,despesasViewMode,habitGroupByPeriod,streakChipSort,appSection,rotina}).catch(()=>{});
   },500);
 }
 
@@ -901,10 +902,27 @@ function openIconPicker(anchorEl,key){
 function closeIconPicker(){ document.getElementById("iconPickerPanel").classList.remove("open"); iconPickerTarget=null; }
 function applyIconPick(emoji){
   if(!iconPickerTarget) return;
-  uiIcons={...uiIcons,[iconPickerTarget]:emoji.slice(0,4)};
-  scheduleSave(); renderShell(); renderAll();
-  closeIconPicker();
-  renderAppearancePanel();
+  const val=emoji.slice(0,4);
+  const target=iconPickerTarget;
+  if(target.kind==="uiIcon"){
+    uiIcons={...uiIcons,[target.key]:val};
+    scheduleSave(); renderShell(); renderAll();
+    closeIconPicker();
+    renderAppearancePanel();
+    return;
+  }
+  if(target.kind==="habit"){
+    const h=rotina.habits.find(x=>x.id===target.id);
+    if(h) h.emoji=val;
+    scheduleSave(); renderAll();
+    closeIconPicker();
+    return;
+  }
+  if(target.kind==="area"){
+    setAreaEmoji(target.id,val);
+    closeIconPicker();
+    return;
+  }
 }
 document.addEventListener("click",()=>closeIconPicker());
 document.getElementById("iconPickerPanel").addEventListener("click",e=>e.stopPropagation());
@@ -1024,7 +1042,7 @@ function renderAppearancePanel(){
   wireAddRow("catAdd", name=>addCategory(name));
   document.getElementById("chartStyleSel").onchange=e=>{chartStyle=e.target.value;scheduleSave();renderAll();};
   document.getElementById("wrapNamesToggle").onchange=e=>{ wrapNames=e.target.checked; scheduleSave(); renderAll(); renderAppearancePanel(); };
-  p.querySelectorAll("[data-iconbtn]").forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); openIconPicker(b,b.dataset.iconbtn); });
+  p.querySelectorAll("[data-iconbtn]").forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); openIconPicker(b,{kind:"uiIcon",key:b.dataset.iconbtn}); });
 }
 document.getElementById("btnAparencia").onclick=(e)=>{
   e.stopPropagation();
@@ -1675,11 +1693,6 @@ const HABIT_ICON_SUGGESTIONS = [
 ];
 function addHabit(name,emoji,hasNotes){ rotina.habits.push({id:nid("hab"), emoji:emoji||"⭐", name, log:{}, notes:{}, hasNotes:!!hasNotes}); scheduleSave(); renderAll(); }
 function renameHabit(id,name){ const h=rotina.habits.find(x=>x.id===id); if(h) h.name=name; scheduleSave(); }
-function editHabitIcon(id){
-  const h=rotina.habits.find(x=>x.id===id); if(!h) return;
-  const v=prompt("Cole ou digite um emoji pra esse hábito:", h.emoji);
-  if(v&&v.trim()){ h.emoji=v.trim().slice(0,4); scheduleSave(); renderAll(); }
-}
 function deleteHabit(id){ rotina.habits=rotina.habits.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
 function toggleHabitDay(id,ds){
   const h=rotina.habits.find(x=>x.id===id); if(!h) return;
@@ -1714,6 +1727,31 @@ function habitFullHistory(h,days){
     const d=addDays(new Date(),-i);
     const ds=dateStr(d);
     arr.push({ds, on:!!(h.log&&h.log[ds]), note:h.notes&&h.notes[ds]});
+  }
+  return arr;
+}
+function habitScopeList(scopeValue){
+  if(scopeValue==="all") return rotina.habits;
+  if(scopeValue.startsWith("period:")){
+    const per=scopeValue.slice(7);
+    const key=per==="null"?null:per;
+    return rotina.habits.filter(h=>(h.period||null)===key);
+  }
+  if(scopeValue.startsWith("habit:")){
+    const h=rotina.habits.find(x=>x.id===scopeValue.slice(6));
+    return h?[h]:[];
+  }
+  return [];
+}
+function habitScopeHistory(scopeValue,days){
+  const habitsInScope=habitScopeList(scopeValue);
+  const n=Math.max(1,days||7);
+  const arr=[];
+  for(let i=0;i<n;i++){
+    const d=addDays(new Date(),-i);
+    const ds=dateStr(d);
+    const doneHabits=habitsInScope.filter(h=>h.log&&h.log[ds]);
+    arr.push({ds, total:habitsInScope.length, done:doneHabits.length, doneList:doneHabits.map(h=>h.emoji)});
   }
   return arr;
 }
@@ -1831,6 +1869,7 @@ function addAgendaItem(title,forTomorrow){
   scheduleSave(); renderAll();
 }
 function deleteAgendaItem(id){ rotina.agenda=rotina.agenda.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
+function toggleAgendaDone(id){ const a=rotina.agenda.find(x=>x.id===id); if(a) a.done=!a.done; scheduleSave(); renderAll(); }
 function agendaNext7Days(){
   const days=[];
   for(let i=0;i<7;i++){ const d=addDays(new Date(),i); const ds=dateStr(d); days.push({label: i===0?"Hoje":DOW_FULL[d.getDay()], items: rotina.agenda.filter(a=>a.date===ds).sort((a,b)=>a.time.localeCompare(b.time))}); }
@@ -1838,7 +1877,7 @@ function agendaNext7Days(){
 }
 function nextAgendaItem(){
   const ds=todayStr(), now=new Date(), nowHM=String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");
-  const upcoming=rotina.agenda.filter(a=> a.date>ds || (a.date===ds && a.time>=nowHM)).sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
+  const upcoming=rotina.agenda.filter(a=> !a.done && (a.date>ds || (a.date===ds && a.time>=nowHM))).sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
   return upcoming[0]||null;
 }
 
@@ -2101,24 +2140,50 @@ let expandedHabitId=null;
 let habitHistN=7, habitHistUnit="days"; // alcance do histórico expandido de um hábito
 let habitGroupByPeriod=false; // agrupar hábitos por manhã/tarde/noite
 const HABIT_PERIODS=[{key:"manha",label:"☀️ Manhã"},{key:"tarde",label:"🌤️ Tarde"},{key:"noite",label:"🌙 Noite"},{key:null,label:"— Sem período"}];
+let histDetailScope="all", histDetailN=14, histDetailUnit="days"; // histórico detalhado: hábito único, período ou todos
+let streakChipSort="streak"; // ordenação dos chips "Sequência de cada hábito" no painel do dia: streak|period|alpha|manual
+function sortedHabitsForChips(){
+  const periodOrder={manha:0,tarde:1,noite:2};
+  const periodRank=h=>(h.period&&h.period in periodOrder)?periodOrder[h.period]:3;
+  const manualIndex=new Map(rotina.habits.map((h,i)=>[h.id,i]));
+  const arr=[...rotina.habits];
+  if(streakChipSort==="alpha") arr.sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
+  else if(streakChipSort==="period") arr.sort((a,b)=>periodRank(a)-periodRank(b) || manualIndex.get(a.id)-manualIndex.get(b.id));
+  else if(streakChipSort==="manual"){ /* já está na ordem manual */ }
+  else arr.sort((a,b)=>habitStreak(b)-habitStreak(a) || periodRank(a)-periodRank(b) || manualIndex.get(a.id)-manualIndex.get(b.id));
+  return arr;
+}
 let expandedGoalId=null;
 function renderRotina(c){
   const now=new Date();
   const tToday=tasksToday(), aToday=autoTasksToday();
   const doneCount=tToday.filter(t=>t.done&&t.done[todayStr()]).length + aToday.filter(a=>rotina.autoTaskDone[todayStr()+"|"+a.areaId+"|"+a.id]).length;
   const totalCount=tToday.length+aToday.length;
+  const pendingCount=totalCount-doneCount;
+  const tasksKpiVal = totalCount===0 ? "Nada marcado" : pendingCount===0 ? "Nenhuma pendente 🎉" : `${pendingCount} pendente${pendingCount===1?"":"s"}`;
   const next=nextAgendaItem();
-  const streakChips=rotina.habits.map(h=>`<span class="streak-chip">${esc(h.emoji)} ${esc(h.name.split(" ").slice(0,2).join(" "))} ${uiIcons.streak}${habitStreak(h)}</span>`).join("");
+  const waterNow=waterToday(), waterGoalVal=rotina.waterGoal||1;
+  const waterDiff=waterGoalVal-waterNow;
+  const waterKpiVal = waterDiff<0 ? `Meta batida! +${-waterDiff}ml` : waterDiff===0 ? "Meta batida! 🎉" : `Faltam ${waterDiff}ml`;
+  const streakChips=sortedHabitsForChips().map(h=>`<span class="streak-chip">${esc(h.emoji)} ${esc(h.name.split(" ").slice(0,2).join(" "))} ${uiIcons.streak}${habitStreak(h)}</span>`).join("");
 
   c.innerHTML = `
     <section style="background:var(--ink);color:var(--onInk);border-radius:20px;padding:22px 24px;margin-bottom:18px">
       <p style="margin:0;font-size:12px;opacity:.75;text-transform:uppercase;letter-spacing:1px">Hoje · ${DOW_FULL[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}</p>
       <div class="kpi-grid" style="margin-top:14px">
-        <div class="kpi"><div class="kpi-lbl">Tarefas do dia</div><div class="kpi-val">${doneCount}/${totalCount}</div></div>
-        <div class="kpi"><div class="kpi-lbl">Água hoje</div><div class="kpi-val">${waterToday()}/${rotina.waterGoal}ml</div></div>
-        <div class="kpi"><div class="kpi-lbl">Próximo compromisso</div><div class="kpi-val" style="font-size:15px">${next?esc(next.time+" "+next.title):"Nada marcado"}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Tarefas do dia</div><div class="kpi-val" style="font-size:16px">${tasksKpiVal}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Água hoje</div><div class="kpi-val" style="font-size:16px">${waterKpiVal}</div></div>
+        <div class="kpi"><div class="kpi-lbl">Próximo compromisso</div><div class="kpi-val" style="font-size:15px">${next?esc(next.time+" "+next.title):"Nenhum compromisso pendente"}</div></div>
       </div>
-      ${rotina.habits.length?`<p class="kpi-lbl" style="margin-top:16px;margin-bottom:8px">Sequência de cada hábito</p><div class="streak-chips">${streakChips}</div>`:""}
+      ${rotina.habits.length?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:16px;margin-bottom:8px">
+        <p class="kpi-lbl" style="margin:0">Sequência de cada hábito</p>
+        <select id="rtStreakSortSel" style="background:#ffffff14;color:var(--onInk);border:1px solid #ffffff33;border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer">
+          <option value="streak" ${streakChipSort==="streak"?"selected":""}>Maior sequência primeiro</option>
+          <option value="period" ${streakChipSort==="period"?"selected":""}>Manhã / Tarde / Noite</option>
+          <option value="alpha" ${streakChipSort==="alpha"?"selected":""}>Ordem alfabética</option>
+          <option value="manual" ${streakChipSort==="manual"?"selected":""}>Ordem da lista (setinhas)</option>
+        </select>
+      </div><div class="streak-chips">${streakChips}</div>`:""}
     </section>
 
     <div class="grid2">
@@ -2259,6 +2324,30 @@ function renderRotina(c){
     </div>
 
     <div class="card" style="margin-bottom:20px">
+      <p class="card-title" style="margin-bottom:2px">🗓️ Histórico detalhado</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Veja dia a dia o que foi cumprido — de um hábito só, de um agrupamento (manhã/tarde/noite) ou de todos, em qualquer período (até 1 ano).</p>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <select id="histScopeSel" style="border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:12.5px;background:var(--paper);color:var(--text)">
+          <option value="all" ${histDetailScope==="all"?"selected":""}>Todos os hábitos</option>
+          <optgroup label="Por agrupamento">
+            ${HABIT_PERIODS.map(p=>`<option value="period:${p.key===null?"null":p.key}" ${histDetailScope==="period:"+(p.key===null?"null":p.key)?"selected":""}>${p.label}</option>`).join("")}
+          </optgroup>
+          ${rotina.habits.length?`<optgroup label="Um hábito específico">${rotina.habits.map(h=>`<option value="habit:${h.id}" ${histDetailScope==="habit:"+h.id?"selected":""}>${esc(h.emoji)} ${esc(h.name)}</option>`).join("")}</optgroup>`:""}
+        </select>
+        <span style="font-size:12px;color:var(--muted)">últimos</span>
+        <input type="number" id="histRangeN" min="1" max="365" value="${histDetailN}" style="width:64px;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--paper);color:var(--text)">
+        <select id="histRangeUnit" style="border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--paper);color:var(--text)">
+          <option value="days" ${histDetailUnit==="days"?"selected":""}>dia(s)</option>
+          <option value="weeks" ${histDetailUnit==="weeks"?"selected":""}>semana(s)</option>
+          <option value="months" ${histDetailUnit==="months"?"selected":""}>mês(es)</option>
+        </select>
+        <button class="ghost-row-btn" id="histRangeApply">Aplicar</button>
+        <span style="display:flex;gap:6px;flex-wrap:wrap">${DASH_QUICK_PICKS.map(q=>`<button class="ghost-row-btn" data-histdetailquick="${q.n}|${q.unit}">${q.label}</button>`).join("")}</span>
+      </div>
+      <div id="rtHistDetailList" style="max-height:420px;overflow-y:auto"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px">
         <p class="card-title" style="margin:0">Dashboard</p>
         <div style="display:flex;gap:8px">
@@ -2349,6 +2438,62 @@ function renderRotina(c){
 function wireRotina(c){
   const wide=wrapNames;
   const tToday=tasksToday(), aToday=autoTasksToday();
+
+  const streakSortSel=document.getElementById("rtStreakSortSel");
+  if(streakSortSel) streakSortSel.onchange=(e)=>{ streakChipSort=e.target.value; scheduleSave(); renderRotina(c); };
+
+  // Histórico detalhado (hábito único / agrupamento / todos, em qualquer período)
+  function renderHistDetailList(){
+    const el=document.getElementById("rtHistDetailList");
+    if(!el) return;
+    const scopeVal=histDetailScope;
+    const days=unitToDays(histDetailN,histDetailUnit);
+    if(scopeVal.startsWith("habit:")){
+      const h=rotina.habits.find(x=>x.id===scopeVal.slice(6));
+      if(!h){ el.innerHTML=`<p class="empty-hint">Hábito não encontrado.</p>`; return; }
+      el.innerHTML=habitFullHistory(h,days).map(d=>{
+        const dt=new Date(d.ds+"T00:00:00");
+        const label=`${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`;
+        return `<div class="hist-row">
+          <span class="goal-sub hist-daylabel ${d.on?"done":""}" style="margin:0">${label} ${d.on?"✓":"✗"}</span>
+          ${d.note?`<div class="hist-note-view">${esc(d.note)}</div>`:""}
+        </div>`;
+      }).join("");
+    } else {
+      const habitsInScope=habitScopeList(scopeVal);
+      if(!habitsInScope.length){ el.innerHTML=`<p class="empty-hint">Nenhum hábito nesse agrupamento ainda.</p>`; return; }
+      el.innerHTML=habitScopeHistory(scopeVal,days).map(r=>{
+        const dt=new Date(r.ds+"T00:00:00");
+        const label=`${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`;
+        const pct=r.total?Math.round(r.done/r.total*100):0;
+        const pctColor=pct>=100?"var(--positive)":pct>0?"var(--accent2)":"var(--muted)";
+        return `<div class="hist-row">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span class="goal-sub" style="margin:0">${label}</span>
+            <span style="font-family:var(--mono);font-weight:700;font-size:12.5px;color:${pctColor}">${r.done}/${r.total} (${pct}%)</span>
+          </div>
+          ${r.doneList.length?`<div style="font-size:15px;margin-top:2px">${r.doneList.join(" ")}</div>`:""}
+        </div>`;
+      }).join("");
+    }
+  }
+  const histScopeSelEl=document.getElementById("histScopeSel");
+  if(histScopeSelEl){
+    histScopeSelEl.onchange=()=>{ histDetailScope=histScopeSelEl.value; renderHistDetailList(); };
+    document.getElementById("histRangeApply").onclick=()=>{
+      histDetailN=Math.max(1,Number(document.getElementById("histRangeN").value)||1);
+      histDetailUnit=document.getElementById("histRangeUnit").value;
+      renderHistDetailList();
+    };
+    document.querySelectorAll("[data-histdetailquick]").forEach(b=>b.onclick=()=>{
+      const [n,unit]=b.dataset.histdetailquick.split("|");
+      histDetailN=Number(n); histDetailUnit=unit;
+      document.getElementById("histRangeN").value=n;
+      document.getElementById("histRangeUnit").value=unit;
+      renderHistDetailList();
+    });
+    renderHistDetailList();
+  }
 
   // Tarefas (kanban: A fazer / Feito)
   const taskListEl=document.getElementById("rtTaskList");
@@ -2462,7 +2607,7 @@ function wireRotina(c){
   habitListEl.querySelectorAll("[data-hrn]").forEach(i=>i.onchange=()=>renameHabit(i.dataset.hrn,i.value));
   wireAutoGrowTAs(habitListEl,".hname-inp");
   habitListEl.querySelectorAll("[data-hdel]").forEach(b=>b.onclick=()=>deleteHabit(b.dataset.hdel));
-  habitListEl.querySelectorAll("[data-hicon]").forEach(b=>b.onclick=()=>editHabitIcon(b.dataset.hicon));
+  habitListEl.querySelectorAll("[data-hicon]").forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); openIconPicker(b,{kind:"habit",id:b.dataset.hicon}); });
   habitListEl.querySelectorAll("[data-hnote]").forEach(b=>b.onclick=()=>editHabitNote(b.dataset.hnote,todayStr()));
   habitListEl.querySelectorAll("[data-hperiod]").forEach(sel=>sel.onchange=()=>setHabitPeriod(sel.dataset.hperiod,sel.value));
   habitListEl.querySelectorAll("[data-hexpand]").forEach(b=>b.onclick=()=>{ expandedHabitId = expandedHabitId===b.dataset.hexpand ? null : b.dataset.hexpand; renderRotina(c); });
@@ -2514,19 +2659,28 @@ function wireRotina(c){
   // Agenda
   document.querySelectorAll("#rtAgendaSeg button").forEach(b=>b.onclick=()=>{ agendaViewMode=b.dataset.mode; renderRotina(c); });
   const agendaListEl=document.getElementById("rtAgendaList");
+  const agendaItemHTML=a=>`<div class="agenda-item">
+    <button class="chk" data-adone="${a.id}" style="width:22px;height:22px;flex-shrink:0;margin-top:1px;${a.done?"background:var(--positive);border-color:var(--positive)":""}">${a.done?"✓":""}</button>
+    <span class="agenda-time">${esc(a.time)}</span>
+    <div style="flex:1">
+      <div class="agenda-title" style="${a.done?"color:var(--muted);text-decoration:line-through":""}">${esc(a.title)}</div>
+      <div class="agenda-tag">${esc(a.tag)}</div>
+    </div>
+    <button class="icon-btn del" data-adel="${a.id}">🗑</button>
+  </div>`;
   if(agendaViewMode==="tomorrow"){
     const d=addDays(new Date(),1), ds=dateStr(d);
     const items=rotina.agenda.filter(a=>a.date===ds).sort((a,b)=>a.time.localeCompare(b.time));
-    agendaListEl.innerHTML = items.length? items.map(a=>`
-      <div class="agenda-item"><span class="agenda-time">${esc(a.time)}</span><div style="flex:1"><div class="agenda-title">${esc(a.title)}</div><div class="agenda-tag">${esc(a.tag)}</div></div><button class="icon-btn del" data-adel="${a.id}">🗑</button></div>`).join("")
+    agendaListEl.innerHTML = items.length? items.map(agendaItemHTML).join("")
       : `<p class="empty-hint">Nada marcado para amanhã (${DOW_FULL[d.getDay()]}).</p>`;
   } else {
     agendaListEl.innerHTML = agendaNext7Days().map(day=>`
       <div class="agenda-day-hd">${day.label}</div>
-      ${day.items.length? day.items.map(a=>`<div class="agenda-item"><span class="agenda-time">${esc(a.time)}</span><div style="flex:1"><div class="agenda-title">${esc(a.title)}</div><div class="agenda-tag">${esc(a.tag)}</div></div><button class="icon-btn del" data-adel="${a.id}">🗑</button></div>`).join("") : `<p class="empty-hint">Nada marcado.</p>`}
+      ${day.items.length? day.items.map(agendaItemHTML).join("") : `<p class="empty-hint">Nada marcado.</p>`}
     `).join("");
   }
   agendaListEl.querySelectorAll("[data-adel]").forEach(b=>b.onclick=()=>deleteAgendaItem(b.dataset.adel));
+  agendaListEl.querySelectorAll("[data-adone]").forEach(b=>b.onclick=()=>toggleAgendaDone(b.dataset.adone));
   document.getElementById("rtAgendaAdd").onclick=()=>{
     const inp=document.getElementById("rtAgendaInp");
     if(inp.value.trim()){ addAgendaItem(inp.value.trim(), agendaViewMode==="tomorrow"); inp.value=""; }
@@ -2534,12 +2688,13 @@ function wireRotina(c){
 
   // Água
   const circumference=276.5;
-  const pct=Math.min(100, Math.round(waterToday()/rotina.waterGoal*100));
+  const pctReal=Math.round(waterToday()/rotina.waterGoal*100);
+  const pctRing=Math.min(100,pctReal);
   document.getElementById("rtWaterMl").textContent=waterToday();
   document.getElementById("rtWaterGoalTxt").textContent=rotina.waterGoal;
   document.getElementById("rtWaterGoalTxt2").textContent=rotina.waterGoal+"ml";
-  document.getElementById("rtWaterPct").textContent=pct+"%";
-  document.getElementById("rtWaterArc").setAttribute("stroke-dashoffset", circumference-(circumference*pct/100));
+  document.getElementById("rtWaterPct").textContent=pctReal+"%";
+  document.getElementById("rtWaterArc").setAttribute("stroke-dashoffset", circumference-(circumference*pctRing/100));
   document.querySelectorAll(".quick-add [data-add]").forEach(b=>b.onclick=()=>addWater(Number(b.dataset.add)));
   document.getElementById("rtWaterOther").onclick=()=>{ const v=prompt("Quantos ml?"); if(v&&!isNaN(v)) addWater(Number(v)); };
   document.getElementById("rtWaterRemove").onclick=()=>{ const v=prompt("Quantos ml remover de hoje?"); if(v&&!isNaN(v)) subtractWater(Number(v)); };
@@ -2576,7 +2731,7 @@ function wireRotina(c){
     document.getElementById("rtAreaColorInp").oninput=e=>setAreaColor(activeArea.id,e.target.value);
     document.getElementById("rtAreaActiveNameInp").value=activeArea.name;
     document.getElementById("rtAreaActiveNameInp").onchange=e=>renameArea(activeArea.id,e.target.value);
-    document.getElementById("rtAreaIconEditBtn").onclick=()=>{ const v=prompt("Novo ícone (emoji):",activeArea.emoji); if(v&&v.trim()) setAreaEmoji(activeArea.id,v.trim().slice(0,4)); };
+    document.getElementById("rtAreaIconEditBtn").onclick=(e)=>{ e.stopPropagation(); openIconPicker(e.currentTarget,{kind:"area",id:activeArea.id}); };
     document.getElementById("rtAreaDelBtn").onclick=()=>{ deleteArea(activeArea.id); activeAreaId=null; };
 
     const routineListEl=document.getElementById("rtRoutineList");
