@@ -183,8 +183,15 @@ textarea.row-input{resize:none;overflow:hidden;white-space:pre-wrap;word-break:b
 .hbar-lbl{font-size:8.5px;color:var(--muted);line-height:1.2;text-align:center;white-space:nowrap;}
 .hbar{width:100%;height:10px;border-radius:999px;border:none;background:var(--line);cursor:pointer;padding:0;}
 .hbar.on{background:var(--positive);}
+.hbar.missed{background:var(--negative);}
 .hbar.today{box-shadow:0 0 0 2px var(--accent2);}
+.hbar.locked{cursor:not-allowed;opacity:.7;}
 .hist-daylabel.done{font-weight:700;color:var(--text);}
+.hist-daylabel.missed{font-weight:700;color:var(--negative);}
+.ds-btn{width:100%;text-align:left;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--text);font-size:12.5px;cursor:pointer;margin-bottom:5px;}
+.ds-btn:last-child{margin-bottom:0;}
+.ds-btn.ds-done:hover{border-color:var(--positive);}
+.ds-btn.ds-missed:hover{border-color:var(--negative);}
 .weekly-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;flex-wrap:wrap;gap:6px;}
 .weekly-row:last-child{border-bottom:none;}
 .hstreak{font-family:var(--mono);font-weight:700;font-size:13.5px;padding:5px 11px;border-radius:10px;flex-shrink:0;}
@@ -317,6 +324,7 @@ textarea.row-input{resize:none;overflow:hidden;white-space:pre-wrap;word-break:b
         <div><h1>Log Pose</h1><p id="helloTxt"></p></div>
       </div>
       <div class="hd-right">
+        <span id="todayDateLbl" style="font-size:11.5px;color:#ffffffaa;font-family:var(--mono);align-self:center" title="Data considerada 'hoje' pelo app"></span>
         <div class="appearance-btn">
           <button id="btnAparencia">🎨 Aparência</button>
           <div class="appearance-panel" id="appearancePanel"></div>
@@ -327,6 +335,7 @@ textarea.row-input{resize:none;overflow:hidden;white-space:pre-wrap;word-break:b
   </header>
   <div class="cc-panel" id="cellColorPanel"></div>
   <div class="icon-picker-panel" id="iconPickerPanel"></div>
+  <div class="cc-panel" id="dayStatusPanel" style="flex-direction:column;width:190px"></div>
   <div class="toplevel" id="toplevelNav">
     <button id="btnTopRotina">Rotina</button>
     <button id="btnTopFin">Finanças</button>
@@ -928,6 +937,34 @@ function applyIconPick(emoji){
 }
 document.addEventListener("click",()=>closeIconPicker());
 document.getElementById("iconPickerPanel").addEventListener("click",e=>e.stopPropagation());
+
+// ───────── POPUP: MARCAR DIA DE HÁBITO (feito / não realizado / sem marcação) ─────────
+let dayStatusTarget=null;
+function openDayStatusPanel(anchorEl,target){
+  dayStatusTarget=target;
+  const panel=document.getElementById("dayStatusPanel");
+  panel.innerHTML=`
+    <button class="ds-btn ds-done" data-dstatus="done">✅ Feito</button>
+    <button class="ds-btn ds-missed" data-dstatus="missed">❌ Não realizado</button>
+    <button class="ds-btn ds-clear" data-dstatus="">— Sem marcação</button>
+  `;
+  panel.querySelectorAll("[data-dstatus]").forEach(b=>b.onclick=()=>{ applyDayStatus(b.dataset.dstatus||null); closeDayStatusPanel(); });
+  const r=anchorEl.getBoundingClientRect();
+  const panelWidth=190;
+  let left=r.left-70; left=Math.max(8,Math.min(left,window.innerWidth-panelWidth-8));
+  panel.style.top=(r.bottom+6)+"px";
+  panel.style.left=left+"px";
+  panel.classList.add("open");
+}
+function closeDayStatusPanel(){ document.getElementById("dayStatusPanel").classList.remove("open"); dayStatusTarget=null; }
+function applyDayStatus(status){
+  if(!dayStatusTarget) return;
+  const {habitId,ds}=dayStatusTarget;
+  setHabitDayStatus(habitId,ds,status);
+  if(unlockedHabitDay===habitId) unlockedHabitDay=null;
+}
+document.addEventListener("click",()=>closeDayStatusPanel());
+document.getElementById("dayStatusPanel").addEventListener("click",e=>e.stopPropagation());
 function setColor(k,v){ colors={...colors,[k]:v}; applyThemeVars(); scheduleSave(); renderShell(); renderAll(); renderAppearancePanel(); }
 
 // ───────── CÁLCULOS ─────────
@@ -959,6 +996,7 @@ const TABS=[
 ];
 function goSection(s){ appSection=s; scheduleSave(); renderShell(); renderAll(); }
 function renderShell(){
+  document.getElementById("todayDateLbl").textContent=`Hoje: ${DOW_SHORT[NOW.getDay()]} ${REAL_DAY}/${REAL_MONTH+1}/${REAL_YEAR}`;
   document.getElementById("btnTopRotina").textContent=`${uiIcons.rotina} Rotina`;
   document.getElementById("btnTopFin").textContent=`${uiIcons.financas} Finanças`;
   document.getElementById("btnTopRotina").classList.toggle("active", appSection==="rotina");
@@ -1676,14 +1714,17 @@ function todayStr(){ return dateStr(new Date()); }
 function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
 
 // ───────── ROTINA: HÁBITOS ─────────
+function isHabitDone(h,ds){ const v=h.log&&h.log[ds]; return v===true||v==="done"; }
+function habitDayStatus(h,ds){ const v=h.log&&h.log[ds]; if(v==="missed") return "missed"; if(v===true||v==="done") return "done"; return "none"; }
+function existedOn(obj,ds){ return !obj.createdAt || obj.createdAt<=ds; }
 function habitStreak(h){
   let s=0, d=new Date();
-  while(h.log && h.log[dateStr(d)]){ s++; d=addDays(d,-1); }
+  while(isHabitDone(h,dateStr(d))){ s++; d=addDays(d,-1); }
   return s;
 }
 function habitLast7(h){
   const arr=[];
-  for(let i=6;i>=0;i--){ const d=addDays(new Date(),-i); arr.push({ds:dateStr(d), on: !!(h.log&&h.log[dateStr(d)])}); }
+  for(let i=6;i>=0;i--){ const d=addDays(new Date(),-i); const ds=dateStr(d); arr.push({ds, status:habitDayStatus(h,ds), on:isHabitDone(h,ds), exists:existedOn(h,ds)}); }
   return arr;
 }
 const HABIT_ICON_SUGGESTIONS = [
@@ -1693,13 +1734,15 @@ const HABIT_ICON_SUGGESTIONS = [
   "🧾","🛒","🍳","🏆","⭐","❤️","😴","🌤️","📐","🧗","🏄","🎹","🧗‍♀️","🧑‍🎨","🌎",
   "💵","💲","💳","✅","☑️","✔️","🔄","🔁","🚦","📊","🪙","🏦","🧮","📌","🗓️","⚡","🌀","🧘‍♂️"
 ];
-function addHabit(name,emoji,hasNotes){ rotina.habits.push({id:nid("hab"), emoji:emoji||"⭐", name, log:{}, notes:{}, hasNotes:!!hasNotes}); scheduleSave(); renderAll(); }
+function addHabit(name,emoji,hasNotes){ rotina.habits.push({id:nid("hab"), emoji:emoji||"⭐", name, log:{}, notes:{}, hasNotes:!!hasNotes, createdAt:todayStr()}); scheduleSave(); renderAll(); }
 function renameHabit(id,name){ const h=rotina.habits.find(x=>x.id===id); if(h) h.name=name; scheduleSave(); }
 function deleteHabit(id){ rotina.habits=rotina.habits.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
-function toggleHabitDay(id,ds){
+function setHabitDayStatus(id,ds,status){
   const h=rotina.habits.find(x=>x.id===id); if(!h) return;
   h.log=h.log||{};
-  if(h.log[ds]) delete h.log[ds]; else h.log[ds]=true;
+  if(status==="done") h.log[ds]="done";
+  else if(status==="missed") h.log[ds]="missed";
+  else delete h.log[ds];
   scheduleSave(); renderAll();
 }
 function editHabitNote(id,ds){
@@ -1728,7 +1771,8 @@ function habitFullHistory(h,days){
   for(let i=0;i<n;i++){
     const d=addDays(new Date(),-i);
     const ds=dateStr(d);
-    arr.push({ds, on:!!(h.log&&h.log[ds]), note:h.notes&&h.notes[ds]});
+    if(!existedOn(h,ds)) break; // não mostra dias anteriores à criação do hábito
+    arr.push({ds, status:habitDayStatus(h,ds), on:isHabitDone(h,ds), note:h.notes&&h.notes[ds]});
   }
   return arr;
 }
@@ -1752,8 +1796,9 @@ function habitScopeHistory(scopeValue,days){
   for(let i=0;i<n;i++){
     const d=addDays(new Date(),-i);
     const ds=dateStr(d);
-    const doneHabits=habitsInScope.filter(h=>h.log&&h.log[ds]);
-    arr.push({ds, total:habitsInScope.length, done:doneHabits.length, doneList:doneHabits.map(h=>h.emoji)});
+    const existing=habitsInScope.filter(h=>existedOn(h,ds));
+    const doneHabits=existing.filter(h=>isHabitDone(h,ds));
+    arr.push({ds, total:existing.length, done:doneHabits.length, doneList:doneHabits.map(h=>h.emoji)});
   }
   return arr;
 }
@@ -1765,7 +1810,7 @@ function tasksToday(){
 }
 function addTask(name,time,repeatWeekly){
   const now=new Date();
-  rotina.tasks.push({id:nid("task"), name, time:time||"--:--", repeatWeekly:!!repeatWeekly, weekday:now.getDay(), date:todayStr(), done:{}});
+  rotina.tasks.push({id:nid("task"), name, time:time||"--:--", repeatWeekly:!!repeatWeekly, weekday:now.getDay(), date:todayStr(), done:{}, createdAt:todayStr()});
   scheduleSave(); renderAll();
 }
 function renameTask(id,name){ const t=rotina.tasks.find(x=>x.id===id); if(t) t.name=name; scheduleSave(); }
@@ -1946,7 +1991,7 @@ function waterMonths(n){
 }
 
 // ───────── ROTINA: METAS ─────────
-function addRotinaGoal(name,target,linkedHabitId){ rotina.goals.push({id:nid("rg"), name, current:0, target:target||4, linkedHabitId:linkedHabitId||null}); scheduleSave(); renderAll(); }
+function addRotinaGoal(name,target,linkedHabitId){ rotina.goals.push({id:nid("rg"), name, current:0, target:target||4, linkedHabitId:linkedHabitId||null, createdAt:todayStr()}); scheduleSave(); renderAll(); }
 function deleteRotinaGoal(id){ rotina.goals=rotina.goals.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
 function bumpRotinaGoal(id,delta){ const g=rotina.goals.find(x=>x.id===id); if(g&&!g.linkedHabitId) g.current=Math.max(0,g.current+delta); scheduleSave(); renderAll(); }
 function editRotinaGoalTarget(id){
@@ -1956,14 +2001,15 @@ function editRotinaGoalTarget(id){
 function unlinkRotinaGoal(id){ const g=rotina.goals.find(x=>x.id===id); if(g) g.linkedHabitId=null; scheduleSave(); renderAll(); }
 function habitCountThisWeek(habitId){
   const h=rotina.habits.find(x=>x.id===habitId); if(!h) return 0;
-  return currentWeekDates().filter(d=>h.log&&h.log[dateStr(d)]).length;
+  return currentWeekDates().filter(d=>isHabitDone(h,dateStr(d))).length;
 }
 
 // ───────── ROTINA: RESUMO/CALENDÁRIO ─────────
 function dayHabitPct(ds){
-  if(!rotina.habits.length) return null;
-  const done=rotina.habits.filter(h=>h.log&&h.log[ds]).length;
-  return Math.round(done/rotina.habits.length*100);
+  const existing=rotina.habits.filter(h=>existedOn(h,ds));
+  if(!existing.length) return null;
+  const done=existing.filter(h=>isHabitDone(h,ds)).length;
+  return Math.round(done/existing.length*100);
 }
 function currentWeekDates(){
   const today=new Date(); const sunday=addDays(today,-today.getDay());
@@ -1972,16 +2018,18 @@ function currentWeekDates(){
 function statsForDateRange(dates){
   if(!dates.length) return {habitPct:null,waterPct:null,taskPct:null};
   const dateStrs=dates.map(dateStr);
-  const habitPct=rotina.habits.length?Math.round(
-    dateStrs.reduce((s,ds)=>s+(rotina.habits.filter(h=>h.log&&h.log[ds]).length/rotina.habits.length),0)/dateStrs.length*100
-  ):null;
+  const habitPcts=dateStrs.map(ds=>{
+    const existing=rotina.habits.filter(h=>existedOn(h,ds));
+    return existing.length ? existing.filter(h=>isHabitDone(h,ds)).length/existing.length : null;
+  }).filter(v=>v!==null);
+  const habitPct=habitPcts.length?Math.round(habitPcts.reduce((a,b)=>a+b,0)/habitPcts.length*100):null;
   const waterPct=Math.round(dateStrs.filter(ds=>(rotina.waterLog[ds]||0)>=rotina.waterGoal).length/dateStrs.length*100);
   const repeatTasks=rotina.tasks.filter(t=>t.repeatWeekly);
-  const dueDates=dates.filter(d=>repeatTasks.some(t=>t.weekday===d.getDay()));
+  const dueDates=dates.filter(d=>repeatTasks.some(t=>t.weekday===d.getDay()&&existedOn(t,dateStr(d))));
   const taskPct=dueDates.length?Math.round(
     dueDates.reduce((s,d)=>{
       const wd=d.getDay(), ds=dateStr(d);
-      const dueToday=repeatTasks.filter(t=>t.weekday===wd);
+      const dueToday=repeatTasks.filter(t=>t.weekday===wd&&existedOn(t,ds));
       return s+dueToday.filter(t=>t.done&&t.done[ds]).length/dueToday.length;
     },0)/dueDates.length*100
   ):null;
@@ -2007,12 +2055,15 @@ function unitToDays(n,unit){ n=Math.max(1,Number(n)||1); return unit==="weeks"?n
 function rangeDates(days){ const arr=[]; for(let i=days-1;i>=0;i--) arr.push(addDays(new Date(),-i)); return arr; }
 function dashboardStats(days){
   const dates=rangeDates(days), dateStrs=dates.map(dateStr);
-  const habitPct = rotina.habits.length ? Math.round(
-    dateStrs.reduce((s,ds)=>s+(rotina.habits.filter(h=>h.log&&h.log[ds]).length/rotina.habits.length),0)/dateStrs.length*100
-  ) : null;
+  const habitPcts=dateStrs.map(ds=>{
+    const existing=rotina.habits.filter(h=>existedOn(h,ds));
+    return existing.length ? existing.filter(h=>isHabitDone(h,ds)).length/existing.length : null;
+  }).filter(v=>v!==null);
+  const habitPct = habitPcts.length ? Math.round(habitPcts.reduce((a,b)=>a+b,0)/habitPcts.length*100) : null;
   const perHabit = rotina.habits.map(h=>{
-    const done=dateStrs.filter(ds=>h.log&&h.log[ds]).length;
-    return {name:h.name, emoji:h.emoji, pct:Math.round(done/dateStrs.length*100)};
+    const relevantDs=dateStrs.filter(ds=>existedOn(h,ds));
+    const done=relevantDs.filter(ds=>isHabitDone(h,ds)).length;
+    return {name:h.name, emoji:h.emoji, pct: relevantDs.length?Math.round(done/relevantDs.length*100):null};
   });
   const waterDaysWithData = dateStrs.filter(ds=>ds in rotina.waterLog).length;
   const waterMet = dateStrs.filter(ds=>(rotina.waterLog[ds]||0)>=rotina.waterGoal).length;
@@ -2029,14 +2080,15 @@ function dashboardStats(days){
     return {name:a.name, emoji:a.emoji, color:a.color, pct: scheduledDays?Math.round(doneDays/scheduledDays*100):null};
   });
   const repeatTasks = rotina.tasks.filter(t=>t.repeatWeekly);
-  const taskPct = repeatTasks.length ? Math.round(
-    dates.reduce((s,d)=>{
+  const dueDatesList = dates.filter(d=>repeatTasks.some(t=>t.weekday===d.getDay()&&existedOn(t,dateStr(d))));
+  const taskPct = dueDatesList.length ? Math.round(
+    dueDatesList.reduce((s,d)=>{
       const wd=d.getDay(), ds=dateStr(d);
-      const dueToday=repeatTasks.filter(t=>t.weekday===wd);
+      const dueToday=repeatTasks.filter(t=>t.weekday===wd&&existedOn(t,ds));
       if(!dueToday.length) return s;
       return s + dueToday.filter(t=>t.done&&t.done[ds]).length/dueToday.length;
-    },0) / dates.filter(d=>repeatTasks.some(t=>t.weekday===d.getDay())).length * 100
-  ) || 0 : null;
+    },0) / dueDatesList.length * 100
+  ) : null;
   return {habitPct, perHabit, waterPct, waterDaysWithData, perArea, taskPct, dates, dateStrs};
 }
 function dashboardTrend(days){
@@ -2046,9 +2098,11 @@ function dashboardTrend(days){
   for(let i=0;i<dates.length;i+=bucketSize){
     const slice=dates.slice(i,i+bucketSize);
     const dsSlice=slice.map(dateStr);
-    const habitPct = rotina.habits.length ? Math.round(
-      dsSlice.reduce((s,ds)=>s+(rotina.habits.filter(h=>h.log&&h.log[ds]).length/rotina.habits.length),0)/dsSlice.length*100
-    ) : 0;
+    const habitPcts=dsSlice.map(ds=>{
+      const existing=rotina.habits.filter(h=>existedOn(h,ds));
+      return existing.length ? existing.filter(h=>isHabitDone(h,ds)).length/existing.length : null;
+    }).filter(v=>v!==null);
+    const habitPct = habitPcts.length ? Math.round(habitPcts.reduce((a,b)=>a+b,0)/habitPcts.length*100) : 0;
     const waterPct = Math.round(dsSlice.filter(ds=>(rotina.waterLog[ds]||0)>=rotina.waterGoal).length/dsSlice.length*100);
     const label = bucketSize===1 ? `${slice[0].getDate()}/${slice[0].getMonth()+1}`
       : bucketSize===7 ? `${slice[0].getDate()}/${slice[0].getMonth()+1}`
@@ -2064,8 +2118,8 @@ function habitTrend(habitId,days){
   const buckets=[];
   for(let i=0;i<dates.length;i+=bucketSize){
     const slice=dates.slice(i,i+bucketSize);
-    const dsSlice=slice.map(dateStr);
-    const pct = h? Math.round(dsSlice.filter(ds=>h.log&&h.log[ds]).length/dsSlice.length*100) : 0;
+    const dsSlice=slice.map(dateStr).filter(ds=>!h||existedOn(h,ds));
+    const pct = (h&&dsSlice.length)? Math.round(dsSlice.filter(ds=>isHabitDone(h,ds)).length/dsSlice.length*100) : null;
     const label = bucketSize===1||bucketSize===7 ? `${slice[0].getDate()}/${slice[0].getMonth()+1}` : slice[0].toLocaleDateString("pt-BR",{month:"short"}).replace(".","");
     buckets.push({label,pct});
   }
@@ -2076,10 +2130,12 @@ function goalWeeklyHistory(g,weeks){
   const today=new Date(), thisSunday=addDays(today,-today.getDay());
   for(let w=weeks-1; w>=0; w--){
     const startSunday=addDays(thisSunday,-7*w);
+    const startDs=dateStr(startSunday);
+    if(g.createdAt && startDs<g.createdAt && dateStr(addDays(startSunday,6))<g.createdAt) continue; // semana inteira antes da meta existir
     let count=0;
     if(g.linkedHabitId){
       const h=rotina.habits.find(x=>x.id===g.linkedHabitId);
-      if(h) for(let i=0;i<7;i++){ const ds=dateStr(addDays(startSunday,i)); if(h.log&&h.log[ds]) count++; }
+      if(h) for(let i=0;i<7;i++){ const ds=dateStr(addDays(startSunday,i)); if(isHabitDone(h,ds)) count++; }
     }
     arr.push({label: w===0?"Essa semana":`-${w}sem`, count, pct: g.target? Math.round(count/g.target*100):0});
   }
@@ -2088,7 +2144,7 @@ function goalWeeklyHistory(g,weeks){
 function exportRotinaCSV(){
   const rows=[["Tipo","Nome","Data","Status/Valor","Observação"]];
   rotina.habits.forEach(h=>{
-    Object.keys(h.log||{}).sort().forEach(ds=>rows.push(["Hábito", h.name, ds, "Concluído", (h.notes&&h.notes[ds])||""]));
+    Object.keys(h.log||{}).sort().forEach(ds=>rows.push(["Hábito", h.name, ds, habitDayStatus(h,ds)==="done"?"Concluído":"Não realizado", (h.notes&&h.notes[ds])||""]));
   });
   Object.keys(rotina.waterLog||{}).sort().forEach(ds=>{
     rows.push(["Água","Água do dia", ds, rotina.waterLog[ds]+"ml", rotina.waterLog[ds]>=rotina.waterGoal?"Meta batida":"Não bateu a meta"]);
@@ -2114,7 +2170,7 @@ function exportRotinaPDF(){
   rotina.habits.forEach(h=>{
     const days=Object.keys(h.log||{}).sort();
     if(!days.length){ addLine(`  ${h.name}: nenhum dia marcado`); return; }
-    days.forEach(ds=>addLine(`  ${ds} — ${h.name}${h.notes&&h.notes[ds]?": "+h.notes[ds]:""}`));
+    days.forEach(ds=>addLine(`  ${ds} — ${h.name} [${habitDayStatus(h,ds)==="done"?"feito":"não realizado"}]${h.notes&&h.notes[ds]?": "+h.notes[ds]:""}`));
   });
   y+=4; addLine("Água:");
   const waterDays=Object.keys(rotina.waterLog||{}).sort();
@@ -2140,6 +2196,7 @@ let dashCustomN=7, dashCustomUnit="days";
 let compareHabitA=null, compareHabitB=null;
 let expandedHabitId=null;
 let habitHistN=7, habitHistUnit="days"; // alcance do histórico expandido de um hábito
+let unlockedHabitDay=null; // id do hábito com a próxima marcação desbloqueada (segurança contra clique sem querer)
 let habitGroupByPeriod=false; // agrupar hábitos por manhã/tarde/noite
 const HABIT_PERIODS=[{key:"manha",label:"☀️ Manhã"},{key:"tarde",label:"🌤️ Tarde"},{key:"noite",label:"🌙 Noite"},{key:null,label:"— Sem período"}];
 let histDetailScope="all", histDetailN=14, histDetailUnit="days"; // histórico detalhado: hábito único, período ou todos
@@ -2558,11 +2615,16 @@ function wireRotina(c){
         <textarea class="row-input hname-inp" data-hrn="${h.id}" rows="1">${esc(h.name)}</textarea>
         <div class="hbars">${habitLast7(h).map((d,di)=>{
           const dt=new Date(d.ds+"T00:00:00");
-          return `<div class="hbar-col"><button class="hbar ${d.on?"on":""} ${di===6?"today":""}" data-hdot="${h.id}|${d.ds}" title="${DOW_FULL[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}${di===6?" (hoje)":""}"></button><span class="hbar-lbl">${DOW_SHORT[dt.getDay()]}<br>${dt.getDate()}/${dt.getMonth()+1}</span></div>`;
+          const isToday=di===6;
+          const canEditDirectly=isToday&&d.status==="none";
+          const locked=!canEditDirectly&&unlockedHabitDay!==h.id;
+          const cls=d.status==="done"?"on":d.status==="missed"?"missed":"";
+          return `<div class="hbar-col"><button class="hbar ${cls} ${isToday?"today":""} ${locked?"locked":""}" data-hdot="${h.id}|${d.ds}" title="${DOW_FULL[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}${isToday?" (hoje)":""}${locked?" — bloqueado, clique em 🔓 pra editar":""}"></button><span class="hbar-lbl">${DOW_SHORT[dt.getDay()]}<br>${dt.getDate()}/${dt.getMonth()+1}</span></div>`;
         }).join("")}</div>
       </div>
       <span class="hstreak" style="background:${withAlpha(colors.accent2,"1c")};color:${colors.accent2}">${uiIcons.streak}${habitStreak(h)}</span>
       <div class="hactions">
+        <button class="icon-btn" data-hunlock="${h.id}" title="Desbloquear a próxima marcação (hoje já marcado, ou um dia anterior)" style="${unlockedHabitDay===h.id?"background:var(--positive);color:#fff;border-radius:6px":""}">🔓</button>
         <select data-hperiod="${h.id}" class="hperiod-sel" title="Período do dia">${HABIT_PERIODS.map(p=>`<option value="${p.key||""}" ${(h.period||null)===p.key?"selected":""}>${p.label}</option>`).join("")}</select>
         ${h.hasNotes?`<button class="icon-btn" data-hnote="${h.id}" title="Observação de hoje">📝</button>`:""}
         <button class="icon-btn" data-hexpand="${h.id}" title="Ver histórico completo">${expandedHabitId===h.id?"▾":"▸"}</button>
@@ -2586,10 +2648,11 @@ function wireRotina(c){
       ${habitFullHistory(h,unitToDays(habitHistN,habitHistUnit)).map(d=>{
         const dt=new Date(d.ds+"T00:00:00");
         const label=`${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`;
+        const mark=d.status==="done"?"✓":d.status==="missed"?"✗":"—";
         return `<div class="hist-row">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-            <span class="goal-sub hist-daylabel ${d.on?"done":""}" style="margin:0">${label} ${d.on?"✓":"✗"}</span>
-            <button class="icon-btn ${d.on?"del":""}" data-htoggleday="${h.id}|${d.ds}" title="${d.on?"Desmarcar este dia":"Marcar como feito"}">${d.on?"🗑":"✓"}</button>
+            <span class="goal-sub hist-daylabel ${d.status!=="none"?d.status:""}" style="margin:0">${label} ${mark}</span>
+            <button class="icon-btn" data-hdaystatus="${h.id}|${d.ds}" title="Marcar ou corrigir este dia">✎</button>
           </div>
           ${h.hasNotes?`<textarea class="hist-note-inp" data-hnoteedit="${h.id}|${d.ds}" placeholder="Observação desse dia...">${esc(d.note||"")}</textarea>`:(d.note?`<div class="hist-note-view">${esc(d.note)}</div>`:"")}
         </div>`;
@@ -2606,7 +2669,23 @@ function wireRotina(c){
   } else {
     habitListEl.innerHTML=rotina.habits.map(habitCardHTML).join("");
   }
-  habitListEl.querySelectorAll("[data-hdot]").forEach(b=>b.onclick=()=>{ const [id,ds]=b.dataset.hdot.split("|"); toggleHabitDay(id,ds); });
+  habitListEl.querySelectorAll("[data-hdot]").forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      const [id,ds]=b.dataset.hdot.split("|");
+      const h=rotina.habits.find(x=>x.id===id); if(!h) return;
+      const isToday=ds===todayStr();
+      const canEditDirectly=isToday&&habitDayStatus(h,ds)==="none";
+      if(!canEditDirectly&&unlockedHabitDay!==id){
+        alert("Esse dia está bloqueado pra evitar clique sem querer. Clique no 🔓 desse hábito pra poder marcar ou corrigir um dia.");
+        return;
+      }
+      openDayStatusPanel(b,{habitId:id,ds});
+    };
+  });
+  habitListEl.querySelectorAll("[data-hunlock]").forEach(b=>{
+    b.onclick=(e)=>{ e.stopPropagation(); unlockedHabitDay = unlockedHabitDay===b.dataset.hunlock ? null : b.dataset.hunlock; renderRotina(c); };
+  });
   habitListEl.querySelectorAll("[data-hrn]").forEach(i=>i.onchange=()=>renameHabit(i.dataset.hrn,i.value));
   wireAutoGrowTAs(habitListEl,".hname-inp");
   habitListEl.querySelectorAll("[data-hdel]").forEach(b=>b.onclick=()=>deleteHabit(b.dataset.hdel));
@@ -2614,7 +2693,7 @@ function wireRotina(c){
   habitListEl.querySelectorAll("[data-hnote]").forEach(b=>b.onclick=()=>editHabitNote(b.dataset.hnote,todayStr()));
   habitListEl.querySelectorAll("[data-hperiod]").forEach(sel=>sel.onchange=()=>setHabitPeriod(sel.dataset.hperiod,sel.value));
   habitListEl.querySelectorAll("[data-hexpand]").forEach(b=>b.onclick=()=>{ expandedHabitId = expandedHabitId===b.dataset.hexpand ? null : b.dataset.hexpand; renderRotina(c); });
-  habitListEl.querySelectorAll("[data-htoggleday]").forEach(b=>b.onclick=()=>{ const [id,ds]=b.dataset.htoggleday.split("|"); toggleHabitDay(id,ds); });
+  habitListEl.querySelectorAll("[data-hdaystatus]").forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); const [id,ds]=b.dataset.hdaystatus.split("|"); openDayStatusPanel(b,{habitId:id,ds}); });
   const habitHistApplyBtn=document.getElementById("habitHistApply");
   if(habitHistApplyBtn) habitHistApplyBtn.onclick=()=>{
     habitHistN=Math.max(1,Number(document.getElementById("habitHistN").value)||1);
@@ -2857,7 +2936,7 @@ function wireRotina(c){
     <div class="kpi"><div class="kpi-lbl">Tarefas recorrentes</div><div class="kpi-val">${stats.taskPct===null?"—":stats.taskPct+"%"}</div></div>
   `;
   document.getElementById("rtDashHabits").innerHTML = stats.perHabit.length? stats.perHabit.map(h=>`
-    <div class="goal-sub" style="display:flex;justify-content:space-between;padding:4px 0"><span>${esc(h.emoji)} ${esc(h.name)}</span><strong>${h.pct}%</strong></div>`).join("") : `<p class="empty-hint">Nenhum hábito ainda.</p>`;
+    <div class="goal-sub" style="display:flex;justify-content:space-between;padding:4px 0"><span>${esc(h.emoji)} ${esc(h.name)}</span><strong>${h.pct===null?"—":h.pct+"%"}</strong></div>`).join("") : `<p class="empty-hint">Nenhum hábito ainda.</p>`;
   document.getElementById("rtDashAreas").innerHTML = stats.perArea.length? stats.perArea.map(a=>`
     <div class="goal-sub" style="display:flex;justify-content:space-between;padding:4px 0"><span>${esc(a.emoji)} ${esc(a.name)}</span><strong>${a.pct===null?"—":a.pct+"%"}</strong></div>`).join("") : `<p class="empty-hint">Nenhuma área ainda.</p>`;
   const trend=dashboardTrend(dashDays);
