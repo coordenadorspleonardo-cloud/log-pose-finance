@@ -78,15 +78,20 @@ td{padding:3px 4px;font-size:12.5px;border-top:1px solid var(--line);}
 .mtable-scroll{overflow-x:auto;}
 .mtable th:nth-child(1),.mtable td:nth-child(1){position:sticky;left:0;z-index:2;background:var(--card);}
 .mtable th:nth-child(2),.mtable td:nth-child(2){position:sticky;left:26px;z-index:2;background:var(--card);box-shadow:2px 0 5px -3px rgba(0,0,0,.25);}
-.mtable td.num{position:relative;}
+.mtable td.num,.mtable th{position:relative;}
 .cell-swatch{position:absolute;top:1px;right:1px;width:8px;height:8px;border-radius:50%;border:1px solid var(--line);background:transparent;padding:0;cursor:pointer;}
 .cell-swatch:hover{border-color:var(--accent2);}
+.cell-swatch-col{left:1px;right:auto;top:2px;}
+.icon-picker-panel{position:fixed;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none;width:250px;}
+.icon-picker-panel.open{display:block;}
 .cc-panel{position:fixed;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none;flex-wrap:wrap;gap:6px;width:172px;}
 .cc-panel.open{display:flex;}
 .cc-swatch{width:24px;height:24px;border-radius:6px;border:1px solid var(--line);cursor:pointer;padding:0;}
 .cc-swatch.cc-clear{display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);background:var(--paper);}
 .cc-custom{position:relative;border-radius:6px;overflow:hidden;cursor:pointer;}
 .cc-custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0;}
+.cc-paste{flex-basis:100%;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:7px 8px;font-size:11px;color:var(--text);cursor:pointer;margin-top:2px;}
+.cc-paste:hover{border-color:var(--positive);}
 td.num{text-align:right;font-family:var(--mono);}
 tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono);}
 .cell-input{border:none;background:transparent;width:100%;font-family:inherit;font-size:13px;padding:5px 4px;color:var(--text);}
@@ -158,6 +163,7 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .row-input{flex:1;border:none;background:transparent;font-size:13.5px;color:var(--text);padding:2px;min-width:60px;}
 .row-input.wide{min-width:190px;}
 .row-input.done-text{color:var(--muted);text-decoration:line-through;}
+textarea.row-input{resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;font-family:inherit;line-height:1.35;display:block;width:100%;min-height:22px;}
 .time-input{font-family:var(--mono);font-size:11px;color:var(--muted);border:none;background:transparent;width:56px;text-align:right;flex-shrink:0;}
 .src-badge{font-size:9.5px;padding:2px 6px;border-radius:5px;white-space:nowrap;flex-shrink:0;}
 .src-badge.treino{background:#1F7A5C22;color:var(--positive);}
@@ -171,11 +177,19 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
 .hbody{flex:1;min-width:150px;}
 .hname-inp{font-size:14px;font-weight:600;}
 .hbars{display:flex;gap:4px;margin-top:8px;}
-.hbar{flex:1;height:10px;min-width:14px;border-radius:999px;border:none;background:var(--line);cursor:pointer;padding:0;}
+.hbar-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;}
+.hbar-lbl{font-size:8.5px;color:var(--muted);line-height:1.2;text-align:center;white-space:nowrap;}
+.hbar{width:100%;height:10px;border-radius:999px;border:none;background:var(--line);cursor:pointer;padding:0;}
 .hbar.on{background:var(--positive);}
 .hbar.today{box-shadow:0 0 0 2px var(--accent2);}
+.hist-daylabel.done{font-weight:700;color:var(--text);}
+.weekly-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;flex-wrap:wrap;gap:6px;}
+.weekly-row:last-child{border-bottom:none;}
 .hstreak{font-family:var(--mono);font-weight:700;font-size:13.5px;padding:5px 11px;border-radius:10px;flex-shrink:0;}
-.hactions{display:flex;gap:1px;flex-shrink:0;}
+.hactions{display:flex;gap:4px;align-items:center;flex-shrink:0;flex-wrap:wrap;}
+.hperiod-sel{border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--muted);font-size:10.5px;padding:4px 3px;cursor:pointer;max-width:88px;}
+.habit-period-hd{font-family:var(--serif);font-size:14.5px;font-weight:600;margin:18px 0 8px;}
+.habit-period-hd:first-child{margin-top:0;}
 .icon-suggest{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;}
 .icon-suggest button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--paper);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
 .icon-suggest button:hover{border-color:var(--positive);}
@@ -310,6 +324,7 @@ tfoot td{border-top:2px solid var(--ink);font-weight:700;font-family:var(--mono)
     </div>
   </header>
   <div class="cc-panel" id="cellColorPanel"></div>
+  <div class="icon-picker-panel" id="iconPickerPanel"></div>
   <div class="toplevel" id="toplevelNav">
     <button id="btnTopRotina">Rotina</button>
     <button id="btnTopFin">Finanças</button>
@@ -617,6 +632,7 @@ function startDataListener(uid){
       wrapNames=d.wrapNames||false;
       uiIcons={rotina:"🔄",financas:"💰",streak:"🔥",...(d.uiIcons||{})};
       despesasViewMode=d.despesasViewMode==="flat"?"flat":"grouped";
+      habitGroupByPeriod=!!d.habitGroupByPeriod;
       appSection=d.appSection||"rotina";
       rotina={...defaultRotina(), ...(d.rotina||{})};
       migrateRotinaAreas();
@@ -643,7 +659,7 @@ function scheduleSave(){
   if(saveTimer) clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
     const stateRef=doc(db,"users",user.uid,"data","state");
-    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames,uiIcons,despesasViewMode,appSection,rotina}).catch(()=>{});
+    setDoc(stateRef,{years,currentYear:year,focusMonth:monthSel,colors,groups,chartColors,chartStyle,budgets,goals,openGroups,sharedWith,sharedWithUids:sharedWith.map(s=>s.uid),watching,wrapNames,uiIcons,despesasViewMode,habitGroupByPeriod,appSection,rotina}).catch(()=>{});
   },500);
 }
 
@@ -738,7 +754,20 @@ function toggleRecurring(section,itemId){
   scheduleSave(); renderAll();
 }
 function renameItem(section,itemId,name){
-  const y=years[year]; y[section]=y[section].map(it=>it.id===itemId?{...it,name}:it);
+  const y=years[year];
+  const oldItem=y[section].find(it=>it.id===itemId);
+  const oldName=oldItem?oldItem.name:"";
+  y[section]=y[section].map(it=>it.id===itemId?{...it,name}:it);
+  const trimmedOld=oldName.trim().toLowerCase(), trimmedNew=name.trim().toLowerCase();
+  if(trimmedOld && trimmedOld!==trimmedNew){
+    const otherYears=Object.keys(years).filter(y2=>Number(y2)!==Number(year));
+    const hasMatchElsewhere=otherYears.some(y2=>(years[y2][section]||[]).some(it=>it.name.trim().toLowerCase()===trimmedOld));
+    if(hasMatchElsewhere && confirm(`Renomear "${oldName}" para "${name}" também nos outros anos?\n\nIsso mantém a soma por item e a comparação entre anos funcionando pra esse item (eles casam pelo nome).`)){
+      otherYears.forEach(y2=>{
+        years[y2][section]=(years[y2][section]||[]).map(it=>it.name.trim().toLowerCase()===trimmedOld?{...it,name}:it);
+      });
+    }
+  }
   scheduleSave();
 }
 function addItem(section,name,group){
@@ -785,16 +814,52 @@ function setTotalCellColor(section,monthIdx,color){
   y.totalColors=tc;
   scheduleSave(); renderAll();
 }
+function paintWholeRow(section,itemId,color){
+  const y=years[year];
+  y[section]=y[section].map(it=>{
+    if(it.id!==itemId) return it;
+    if(!color) return {...it,cellColors:{}};
+    const cc={}; for(let m=0;m<12;m++) cc[m]=color;
+    return {...it,cellColors:cc};
+  });
+  scheduleSave(); renderAll();
+}
+let copiedRowColors=null;
+function copyRowColors(section,itemId){
+  const it=(years[year][section]||[]).find(i=>i.id===itemId);
+  copiedRowColors=(it&&it.cellColors)?{...it.cellColors}:{};
+  alert(Object.keys(copiedRowColors).length ? "Cor da linha copiada! Agora clique no 🖌️ de outra linha e escolha \"Colar cor copiada\"." : "Essa linha não tem nenhuma cor marcada ainda.");
+}
+function pasteRowColors(section,itemId){
+  if(!copiedRowColors) return;
+  const y=years[year];
+  y[section]=y[section].map(it=>it.id===itemId?{...it,cellColors:{...copiedRowColors}}:it);
+  scheduleSave(); renderAll();
+}
+function paintWholeColumn(section,monthIdx,color,itemIds){
+  const y=years[year];
+  const idSet=new Set(itemIds||[]);
+  y[section]=y[section].map(it=>{
+    if(idSet.size&&!idSet.has(it.id)) return it;
+    const cc={...(it.cellColors||{})};
+    if(color) cc[monthIdx]=color; else delete cc[monthIdx];
+    return {...it,cellColors:cc};
+  });
+  scheduleSave(); renderAll();
+}
 const CELL_COLOR_PRESETS=["#FDE68A","#BBF7D0","#BFDBFE","#FBCFE8","#FED7AA","#E5E7EB","#FCA5A5","#C7D2FE"];
 let cellColorTarget=null;
 function openCellColorPanel(anchorEl,target){
   cellColorTarget=target;
   const panel=document.getElementById("cellColorPanel");
+  const showPaste=target.kind==="row" && copiedRowColors && Object.keys(copiedRowColors).length;
   panel.innerHTML=CELL_COLOR_PRESETS.map(c=>`<button class="cc-swatch" data-cc="${c}" style="background:${c}" title="Pintar com esta cor"></button>`).join("")
     + `<button class="cc-swatch cc-clear" data-cc="" title="Remover cor">✕</button>`
-    + `<label class="cc-custom cc-swatch" title="Escolher outra cor"><input type="color" value="#B8963E" data-cccustom="1"></label>`;
+    + `<label class="cc-custom cc-swatch" title="Escolher outra cor"><input type="color" value="#B8963E" data-cccustom="1"></label>`
+    + (showPaste?`<button class="cc-paste" data-ccpaste="1">📋 Colar cor copiada</button>`:"");
   panel.querySelectorAll("[data-cc]").forEach(b=>b.onclick=()=>{ applyCellColor(b.dataset.cc||null); closeCellColorPanel(); });
   panel.querySelector("[data-cccustom]").oninput=e=>{ applyCellColor(e.target.value); closeCellColorPanel(); };
+  if(showPaste) panel.querySelector("[data-ccpaste]").onclick=()=>{ pasteRowColors(target.section,target.itemId); closeCellColorPanel(); };
   const r=anchorEl.getBoundingClientRect();
   const panelWidth=172;
   let left=r.left-80; left=Math.max(8,Math.min(left,window.innerWidth-panelWidth-8));
@@ -805,12 +870,44 @@ function openCellColorPanel(anchorEl,target){
 function closeCellColorPanel(){ document.getElementById("cellColorPanel").classList.remove("open"); cellColorTarget=null; }
 function applyCellColor(color){
   if(!cellColorTarget) return;
-  const {kind,section,itemId,month}=cellColorTarget;
+  const {kind,section,itemId,month,itemIds}=cellColorTarget;
   if(kind==="item") setCellColor(section,itemId,month,color);
-  else setTotalCellColor(section,month,color);
+  else if(kind==="total") setTotalCellColor(section,month,color);
+  else if(kind==="row") paintWholeRow(section,itemId,color);
+  else if(kind==="col") paintWholeColumn(section,month,color,itemIds);
 }
 document.addEventListener("click",()=>closeCellColorPanel());
 document.getElementById("cellColorPanel").addEventListener("click",e=>e.stopPropagation());
+
+// ───────── SELETOR DE EMOJI DOS ÍCONES DO APP (Rotina/Finanças/Sequência) ─────────
+let iconPickerTarget=null;
+function openIconPicker(anchorEl,key){
+  iconPickerTarget=key;
+  const panel=document.getElementById("iconPickerPanel");
+  panel.innerHTML=`<div class="icon-suggest" style="max-height:170px;overflow-y:auto;margin-bottom:8px">${HABIT_ICON_SUGGESTIONS.map(e=>`<button type="button" data-pickicon="${e}">${e}</button>`).join("")}</div>
+    <div style="display:flex;gap:6px">
+      <input type="text" id="iconPickerCustom" maxlength="4" placeholder="outro emoji" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;background:var(--paper);color:var(--text)">
+      <button id="iconPickerUse" style="background:var(--ink);color:var(--onInk);border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">Usar</button>
+    </div>`;
+  panel.querySelectorAll("[data-pickicon]").forEach(b=>b.onclick=()=>applyIconPick(b.dataset.pickicon));
+  document.getElementById("iconPickerUse").onclick=()=>{ const v=document.getElementById("iconPickerCustom").value.trim(); if(v) applyIconPick(v); };
+  const r=anchorEl.getBoundingClientRect();
+  const panelWidth=250;
+  let left=r.left; left=Math.max(8,Math.min(left,window.innerWidth-panelWidth-8));
+  panel.style.top=(r.bottom+6)+"px";
+  panel.style.left=left+"px";
+  panel.classList.add("open");
+}
+function closeIconPicker(){ document.getElementById("iconPickerPanel").classList.remove("open"); iconPickerTarget=null; }
+function applyIconPick(emoji){
+  if(!iconPickerTarget) return;
+  uiIcons={...uiIcons,[iconPickerTarget]:emoji.slice(0,4)};
+  scheduleSave(); renderShell(); renderAll();
+  closeIconPicker();
+  renderAppearancePanel();
+}
+document.addEventListener("click",()=>closeIconPicker());
+document.getElementById("iconPickerPanel").addEventListener("click",e=>e.stopPropagation());
 function setColor(k,v){ colors={...colors,[k]:v}; applyThemeVars(); scheduleSave(); renderShell(); renderAll(); renderAppearancePanel(); }
 
 // ───────── CÁLCULOS ─────────
@@ -903,18 +1000,18 @@ function renderAppearancePanel(){
     <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;margin-bottom:16px">
       <input type="checkbox" id="wrapNamesToggle" ${wrapNames?"checked":""}> Mostrar nomes completos (alarga a coluna)
     </label>
-    <p class="lbl">Ícones do app</p>
+    <p class="lbl">Ícones do app <span style="font-weight:400">(clique pra escolher)</span></p>
     <div style="display:flex;gap:14px;flex-wrap:wrap">
       <div style="text-align:center">
-        <input type="text" maxlength="4" value="${esc(uiIcons.rotina)}" data-iconkey="rotina" style="width:40px;height:40px;text-align:center;font-size:19px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--text)">
+        <button type="button" data-iconbtn="rotina" style="width:40px;height:40px;font-size:19px;border:1px solid var(--line);border-radius:8px;background:var(--paper);cursor:pointer">${esc(uiIcons.rotina)}</button>
         <div style="font-size:10px;color:var(--muted);margin-top:4px">Aba Rotina</div>
       </div>
       <div style="text-align:center">
-        <input type="text" maxlength="4" value="${esc(uiIcons.financas)}" data-iconkey="financas" style="width:40px;height:40px;text-align:center;font-size:19px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--text)">
+        <button type="button" data-iconbtn="financas" style="width:40px;height:40px;font-size:19px;border:1px solid var(--line);border-radius:8px;background:var(--paper);cursor:pointer">${esc(uiIcons.financas)}</button>
         <div style="font-size:10px;color:var(--muted);margin-top:4px">Aba Finanças</div>
       </div>
       <div style="text-align:center">
-        <input type="text" maxlength="4" value="${esc(uiIcons.streak)}" data-iconkey="streak" style="width:40px;height:40px;text-align:center;font-size:19px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--text)">
+        <button type="button" data-iconbtn="streak" style="width:40px;height:40px;font-size:19px;border:1px solid var(--line);border-radius:8px;background:var(--paper);cursor:pointer">${esc(uiIcons.streak)}</button>
         <div style="font-size:10px;color:var(--muted);margin-top:4px">Sequência</div>
       </div>
     </div>`;
@@ -927,12 +1024,7 @@ function renderAppearancePanel(){
   wireAddRow("catAdd", name=>addCategory(name));
   document.getElementById("chartStyleSel").onchange=e=>{chartStyle=e.target.value;scheduleSave();renderAll();};
   document.getElementById("wrapNamesToggle").onchange=e=>{ wrapNames=e.target.checked; scheduleSave(); renderAll(); renderAppearancePanel(); };
-  p.querySelectorAll("[data-iconkey]").forEach(inp=>inp.onchange=()=>{
-    const v=inp.value.trim();
-    if(v) uiIcons={...uiIcons,[inp.dataset.iconkey]:v};
-    inp.value=uiIcons[inp.dataset.iconkey];
-    scheduleSave(); renderShell(); renderAll();
-  });
+  p.querySelectorAll("[data-iconbtn]").forEach(b=>b.onclick=(e)=>{ e.stopPropagation(); openIconPicker(b,b.dataset.iconbtn); });
 }
 document.getElementById("btnAparencia").onclick=(e)=>{
   e.stopPropagation();
@@ -969,7 +1061,7 @@ function monthlyTableHTML(items,section,accent,lockedRow,extraCol){
         return `<td class="num" style="${cc?`background:${cc}`:""}"><input class="cell-input num" type="number" placeholder="0" value="${it.values[i]===0?"":it.values[i]}" data-val="${it.id}" data-month="${i}"><button class="cell-swatch" data-cellswatch="item|${it.id}|${i}" title="Marcar cor" style="${cc?`background:${cc};border-color:${cc}`:""}"></button></td>`;
       }).join("")}
       ${showTotal?`<td class="num" style="font-weight:600">${fmt(rowTotal)}</td>`:""}
-      <td><button class="icon-btn del" data-del="${it.id}" title="Remover">🗑</button></td>
+      <td><button class="icon-btn" data-rowcopy="${it.id}" title="Copiar a cor desta linha">📋</button><button class="icon-btn" data-rowpaint="${it.id}" title="Pintar a linha inteira (todos os meses)">🖌️</button><button class="icon-btn del" data-del="${it.id}" title="Remover">🗑</button></td>
     </tr>`;
   });
   if(lockedRow){
@@ -984,7 +1076,7 @@ function monthlyTableHTML(items,section,accent,lockedRow,extraCol){
   if(!items.length && !lockedRow) rowsHtml=`<tr><td colspan="16" class="empty-msg">Nenhum item ainda. Adicione abaixo.</td></tr>`;
   const totalColorsForSection=(years[year]&&years[year].totalColors&&years[year].totalColors[section])||{};
   return `<div class="mtable-scroll"><table class="mtable">
-    <thead><tr><th style="width:26px"></th><th>Item</th>${extraCol?`<th>${extraCol.label}</th>`:""}${idxs.map(i=>`<th style="text-align:right">${MONTHS[i]}</th>`).join("")}${showTotal?`<th style="text-align:right">Total</th>`:""}<th style="width:28px"></th></tr></thead>
+    <thead><tr><th style="width:26px"></th><th>Item</th>${extraCol?`<th>${extraCol.label}</th>`:""}${idxs.map(i=>`<th style="text-align:right">${MONTHS[i]}<button class="cell-swatch cell-swatch-col" data-colpaint="${i}|${items.map(it=>it.id).join(",")}" title="Pintar a coluna inteira de ${MONTHS[i]}"></button></th>`).join("")}${showTotal?`<th style="text-align:right">Total</th>`:""}<th style="width:64px"></th></tr></thead>
     <tbody>${rowsHtml}</tbody>
     <tfoot><tr><td></td><td>Total</td>${extraCol?`<td></td>`:""}${idxs.map(i=>{
       const tc=totalColorsForSection[i]||"";
@@ -1028,6 +1120,19 @@ function wireMonthlyTable(container,section,extraCol){
       const parts=b.dataset.cellswatch.split("|");
       if(parts[0]==="item") openCellColorPanel(b,{kind:"item",section,itemId:parts[1],month:Number(parts[2])});
       else openCellColorPanel(b,{kind:"total",section,month:Number(parts[1])});
+    };
+  });
+  container.querySelectorAll("[data-rowpaint]").forEach(b=>{
+    b.onclick=(e)=>{ e.stopPropagation(); openCellColorPanel(b,{kind:"row",section,itemId:b.dataset.rowpaint}); };
+  });
+  container.querySelectorAll("[data-rowcopy]").forEach(b=>{
+    b.onclick=(e)=>{ e.stopPropagation(); copyRowColors(section,b.dataset.rowcopy); };
+  });
+  container.querySelectorAll("[data-colpaint]").forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      const [m,idsStr]=b.dataset.colpaint.split("|");
+      openCellColorPanel(b,{kind:"col",section,month:Number(m),itemIds:idsStr?idsStr.split(","):[]});
     };
   });
   if(extraCol) extraCol.wire(container);
@@ -1144,6 +1249,10 @@ function wireAddRow(id,onAdd){
   const submit=()=>{ if(inp.value.trim()){ onAdd(inp.value.trim()); inp.value=""; } };
   btn.onclick=submit;
   inp.onkeydown=e=>{ if(e.key==="Enter") submit(); };
+}
+function autoGrowTA(el){ el.style.height="auto"; el.style.height=el.scrollHeight+"px"; }
+function wireAutoGrowTAs(container,selector){
+  container.querySelectorAll(selector).forEach(el=>{ autoGrowTA(el); el.oninput=()=>autoGrowTA(el); });
 }
 
 // ───────── RENDER: DASHBOARD ─────────
@@ -1561,7 +1670,8 @@ const HABIT_ICON_SUGGESTIONS = [
   "🙏","📖","⏰","🏋️","🧘","🍎","🧹","💊","🚿","📚","💧","🎯","🌙","🎧","✍️","🚭","🥗","🏃",
   "💼","🎤","💰","🎓","🥊","⚽","🎨","💻","🩺","🧠","📝","📅","🔥","🌱","🚴","🏊","🛏️","☕",
   "🎵","📷","🎮","🧩","🛠️","🌿","🐕","🧺","🚗","✈️","📞","💡","🎬","♟️","🧵","🪥","🗣️","📈",
-  "🧾","🛒","🍳","🏆","⭐","❤️","😴","🌤️","📐","🧗","🏄","🎹","🧗‍♀️","🧵","🧑‍🎨","🌎"
+  "🧾","🛒","🍳","🏆","⭐","❤️","😴","🌤️","📐","🧗","🏄","🎹","🧗‍♀️","🧑‍🎨","🌎",
+  "💵","💲","💳","✅","☑️","✔️","🔄","🔁","🚦","📊","🪙","🏦","🧮","📌","🗓️","⚡","🌀","🧘‍♂️"
 ];
 function addHabit(name,emoji,hasNotes){ rotina.habits.push({id:nid("hab"), emoji:emoji||"⭐", name, log:{}, notes:{}, hasNotes:!!hasNotes}); scheduleSave(); renderAll(); }
 function renameHabit(id,name){ const h=rotina.habits.find(x=>x.id===id); if(h) h.name=name; scheduleSave(); }
@@ -1586,14 +1696,26 @@ function editHabitNote(id,ds){
   if(v.trim()) h.notes[ds]=v.trim(); else delete h.notes[ds];
   scheduleSave(); renderAll();
 }
-function moveHabit(id,dir){
-  const idx=rotina.habits.findIndex(h=>h.id===id), newIdx=idx+dir;
-  if(idx<0||newIdx<0||newIdx>=rotina.habits.length) return;
-  const arr=rotina.habits; [arr[idx],arr[newIdx]]=[arr[newIdx],arr[idx]];
+function moveHabit(id,dir,visibleIds){
+  const list=visibleIds||rotina.habits.map(h=>h.id);
+  const pos=list.indexOf(id), swapPos=pos+dir;
+  if(pos<0||swapPos<0||swapPos>=list.length) return;
+  const otherId=list[swapPos];
+  const idxA=rotina.habits.findIndex(h=>h.id===id), idxB=rotina.habits.findIndex(h=>h.id===otherId);
+  if(idxA<0||idxB<0) return;
+  const arr=rotina.habits; [arr[idxA],arr[idxB]]=[arr[idxB],arr[idxA]];
   scheduleSave(); renderAll();
 }
-function habitFullHistory(h,limit){
-  return Object.keys(h.log||{}).sort().reverse().slice(0,limit||60).map(ds=>({ds, note:h.notes&&h.notes[ds]}));
+function setHabitPeriod(id,period){ const h=rotina.habits.find(x=>x.id===id); if(h) h.period=period||null; scheduleSave(); renderAll(); }
+function habitFullHistory(h,days){
+  const n=Math.max(1,days||7);
+  const arr=[];
+  for(let i=0;i<n;i++){
+    const d=addDays(new Date(),-i);
+    const ds=dateStr(d);
+    arr.push({ds, on:!!(h.log&&h.log[ds]), note:h.notes&&h.notes[ds]});
+  }
+  return arr;
 }
 
 // ───────── ROTINA: TAREFAS ─────────
@@ -1607,6 +1729,7 @@ function addTask(name,time,repeatWeekly){
   scheduleSave(); renderAll();
 }
 function renameTask(id,name){ const t=rotina.tasks.find(x=>x.id===id); if(t) t.name=name; scheduleSave(); }
+function retaskWeekday(id,weekday){ const t=rotina.tasks.find(x=>x.id===id); if(t) t.weekday=Number(weekday); scheduleSave(); renderAll(); }
 function retimeTask(id,time){ const t=rotina.tasks.find(x=>x.id===id); if(t) t.time=time; scheduleSave(); }
 function deleteTask(id){ rotina.tasks=rotina.tasks.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
 function moveTask(id,dir,visibleIds){
@@ -1805,6 +1928,31 @@ function currentWeekDates(){
   const today=new Date(); const sunday=addDays(today,-today.getDay());
   return Array.from({length:7},(_,i)=>addDays(sunday,i));
 }
+function statsForDateRange(dates){
+  if(!dates.length) return {habitPct:null,waterPct:null,taskPct:null};
+  const dateStrs=dates.map(dateStr);
+  const habitPct=rotina.habits.length?Math.round(
+    dateStrs.reduce((s,ds)=>s+(rotina.habits.filter(h=>h.log&&h.log[ds]).length/rotina.habits.length),0)/dateStrs.length*100
+  ):null;
+  const waterPct=Math.round(dateStrs.filter(ds=>(rotina.waterLog[ds]||0)>=rotina.waterGoal).length/dateStrs.length*100);
+  const repeatTasks=rotina.tasks.filter(t=>t.repeatWeekly);
+  const dueDates=dates.filter(d=>repeatTasks.some(t=>t.weekday===d.getDay()));
+  const taskPct=dueDates.length?Math.round(
+    dueDates.reduce((s,d)=>{
+      const wd=d.getDay(), ds=dateStr(d);
+      const dueToday=repeatTasks.filter(t=>t.weekday===wd);
+      return s+dueToday.filter(t=>t.done&&t.done[ds]).length/dueToday.length;
+    },0)/dueDates.length*100
+  ):null;
+  return {habitPct,waterPct,taskPct};
+}
+function weeklySummary(){
+  const thisWeekAll=currentWeekDates();
+  const todayStrVal=todayStr();
+  const thisWeekSoFar=thisWeekAll.filter(d=>dateStr(d)<=todayStrVal);
+  const lastWeek=thisWeekAll.map(d=>addDays(d,-7));
+  return {thisWeek:statsForDateRange(thisWeekSoFar), lastWeek:statsForDateRange(lastWeek)};
+}
 
 // ───────── ROTINA: DASHBOARD ─────────
 const DASH_QUICK_PICKS = [
@@ -1950,6 +2098,9 @@ let routineHistScale="days";
 let dashCustomN=7, dashCustomUnit="days";
 let compareHabitA=null, compareHabitB=null;
 let expandedHabitId=null;
+let habitHistN=7, habitHistUnit="days"; // alcance do histórico expandido de um hábito
+let habitGroupByPeriod=false; // agrupar hábitos por manhã/tarde/noite
+const HABIT_PERIODS=[{key:"manha",label:"☀️ Manhã"},{key:"tarde",label:"🌤️ Tarde"},{key:"noite",label:"🌙 Noite"},{key:null,label:"— Sem período"}];
 let expandedGoalId=null;
 function renderRotina(c){
   const now=new Date();
@@ -1989,6 +2140,10 @@ function renderRotina(c){
       <div>
         <p class="section-title">Hábitos recorrentes</p>
         <p class="section-sub">${uiIcons.streak} = sequência atual. Barrinhas = últimos 7 dias reais (clique numa barrinha pra marcar/desmarcar aquele dia; clique no ícone pra trocar).</p>
+        <div class="segmented" style="max-width:320px">
+          <button data-habitview="list" class="${!habitGroupByPeriod?"active":""}">Lista única</button>
+          <button data-habitview="period" class="${habitGroupByPeriod?"active":""}">Manhã / Tarde / Noite</button>
+        </div>
         <div id="rtHabitList"></div>
         <div class="add-row" style="margin-top:12px">
           <input type="text" id="rtHabitIcon" placeholder="🙏" style="max-width:52px;text-align:center">
@@ -2098,6 +2253,12 @@ function renderRotina(c){
     </div>
 
     <div class="card" style="margin-bottom:20px">
+      <p class="card-title" style="margin-bottom:2px">📅 Resumo semanal</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Esta semana (até hoje) comparada com a semana passada inteira — sem precisar escolher período nenhum.</p>
+      <div id="rtWeeklySummary"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px">
         <p class="card-title" style="margin:0">Dashboard</p>
         <div style="display:flex;gap:8px">
@@ -2197,8 +2358,8 @@ function wireRotina(c){
     const row = `<div class="task-row">
       <button class="chk ${done?"on":""}" data-tt="${t.id}">${done?"✓":""}</button>
       <div class="task-body">
-        <input class="row-input ${wide?"wide":""} ${done?"done-text":""}" data-trn="${t.id}" value="${esc(t.name)}">
-        <div class="task-meta">${t.repeatWeekly?`<span class="src-badge repeat">🔁 semanal</span>`:""}<input class="time-input" data-ttime="${t.id}" value="${esc(t.time)}"></div>
+        <textarea class="row-input tname-inp ${done?"done-text":""}" data-trn="${t.id}" rows="1">${esc(t.name)}</textarea>
+        <div class="task-meta">${t.repeatWeekly?`<span class="src-badge repeat" style="display:flex;align-items:center;gap:3px;padding:2px 6px 2px 8px">🔁<select data-tweekday="${t.id}" title="Repete toda(o)..." style="border:none;background:transparent;font-size:9.5px;color:var(--muted);cursor:pointer;padding:0">${DOW_SHORT.map((d,i)=>`<option value="${i}" ${i===t.weekday?"selected":""}>${d}</option>`).join("")}</select></span>`:""}<input class="time-input" data-ttime="${t.id}" value="${esc(t.time)}"></div>
       </div>
       <div class="task-actions">
         <button class="icon-btn" data-tup="${t.id}" title="Subir">↑</button>
@@ -2227,7 +2388,9 @@ function wireRotina(c){
   taskListEl.querySelectorAll("[data-tt]").forEach(b=>b.onclick=()=>toggleTaskDone(b.dataset.tt));
   taskListEl.querySelectorAll("[data-tauto]").forEach(b=>b.onclick=()=>{ const [k,id]=b.dataset.tauto.split("|"); const item=aToday.find(x=>x.areaId===k&&x.id===id); toggleAutoDone(k,id,item&&item.text,item&&item.time); });
   taskListEl.querySelectorAll("[data-trn]").forEach(i=>i.onchange=()=>renameTask(i.dataset.trn,i.value));
+  wireAutoGrowTAs(taskListEl,".tname-inp");
   taskListEl.querySelectorAll("[data-ttime]").forEach(i=>i.onchange=()=>retimeTask(i.dataset.ttime,i.value));
+  taskListEl.querySelectorAll("[data-tweekday]").forEach(sel=>sel.onchange=()=>retaskWeekday(sel.dataset.tweekday,sel.value));
   taskListEl.querySelectorAll("[data-tdel]").forEach(b=>b.onclick=()=>deleteTask(b.dataset.tdel));
   const tTodayIds=tToday.map(t=>t.id);
   taskListEl.querySelectorAll("[data-tup]").forEach(b=>b.onclick=()=>moveTask(b.dataset.tup,-1,tTodayIds));
@@ -2240,18 +2403,19 @@ function wireRotina(c){
 
   // Hábitos
   const habitListEl=document.getElementById("rtHabitList");
-  habitListEl.innerHTML = rotina.habits.length? rotina.habits.map(h=>`
+  const habitCardHTML=h=>`
     <div class="hcard">
       <button class="hemoji" data-hicon="${h.id}" title="Trocar ícone">${esc(h.emoji)}</button>
       <div class="hbody">
-        <input class="row-input hname-inp ${wide?"wide":""}" data-hrn="${h.id}" value="${esc(h.name)}">
+        <textarea class="row-input hname-inp" data-hrn="${h.id}" rows="1">${esc(h.name)}</textarea>
         <div class="hbars">${habitLast7(h).map((d,di)=>{
           const dt=new Date(d.ds+"T00:00:00");
-          return `<button class="hbar ${d.on?"on":""} ${di===6?"today":""}" data-hdot="${h.id}|${d.ds}" title="${DOW_FULL[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}${di===6?" (hoje)":""}"></button>`;
+          return `<div class="hbar-col"><button class="hbar ${d.on?"on":""} ${di===6?"today":""}" data-hdot="${h.id}|${d.ds}" title="${DOW_FULL[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}${di===6?" (hoje)":""}"></button><span class="hbar-lbl">${DOW_SHORT[dt.getDay()]}<br>${dt.getDate()}/${dt.getMonth()+1}</span></div>`;
         }).join("")}</div>
       </div>
       <span class="hstreak" style="background:${withAlpha(colors.accent2,"1c")};color:${colors.accent2}">${uiIcons.streak}${habitStreak(h)}</span>
       <div class="hactions">
+        <select data-hperiod="${h.id}" class="hperiod-sel" title="Período do dia">${HABIT_PERIODS.map(p=>`<option value="${p.key||""}" ${(h.period||null)===p.key?"selected":""}>${p.label}</option>`).join("")}</select>
         ${h.hasNotes?`<button class="icon-btn" data-hnote="${h.id}" title="Observação de hoje">📝</button>`:""}
         <button class="icon-btn" data-hexpand="${h.id}" title="Ver histórico completo">${expandedHabitId===h.id?"▾":"▸"}</button>
         <button class="icon-btn" data-hup="${h.id}" title="Subir">↑</button>
@@ -2260,24 +2424,56 @@ function wireRotina(c){
       </div>
     </div>
     ${expandedHabitId===h.id?`<div style="padding:0 2px 14px 16px;max-width:100%;overflow:hidden">
-      ${habitFullHistory(h).length? habitFullHistory(h).map(d=>{
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="font-size:11px;color:var(--muted)">Ver últimos</span>
+        <input type="number" min="1" max="365" value="${habitHistN}" id="habitHistN" style="width:56px;border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:12px;background:var(--paper);color:var(--text)">
+        <select id="habitHistUnit" style="border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:12px;background:var(--paper);color:var(--text)">
+          <option value="days" ${habitHistUnit==="days"?"selected":""}>dia(s)</option>
+          <option value="weeks" ${habitHistUnit==="weeks"?"selected":""}>semana(s)</option>
+          <option value="months" ${habitHistUnit==="months"?"selected":""}>mês(es)</option>
+        </select>
+        <button class="ghost-row-btn" id="habitHistApply" style="padding:5px 10px;font-size:11px">Aplicar</button>
+        <span style="display:flex;gap:4px;flex-wrap:wrap">${DASH_QUICK_PICKS.map(q=>`<button class="ghost-row-btn" data-histquick="${q.n}|${q.unit}" style="padding:5px 8px;font-size:10.5px">${q.label}</button>`).join("")}</span>
+      </div>
+      ${habitFullHistory(h,unitToDays(habitHistN,habitHistUnit)).map(d=>{
         const dt=new Date(d.ds+"T00:00:00");
+        const label=`${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`;
         return `<div class="hist-row">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-            <span class="goal-sub" style="margin:0">${DOW_SHORT[dt.getDay()]} ${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()} ✓</span>
-            <button class="icon-btn del" data-hclearday="${h.id}|${d.ds}" title="Desmarcar este dia">🗑</button>
+            <span class="goal-sub hist-daylabel ${d.on?"done":""}" style="margin:0">${label} ${d.on?"✓":"✗"}</span>
+            <button class="icon-btn ${d.on?"del":""}" data-htoggleday="${h.id}|${d.ds}" title="${d.on?"Desmarcar este dia":"Marcar como feito"}">${d.on?"🗑":"✓"}</button>
           </div>
           ${h.hasNotes?`<textarea class="hist-note-inp" data-hnoteedit="${h.id}|${d.ds}" placeholder="Observação desse dia...">${esc(d.note||"")}</textarea>`:(d.note?`<div class="hist-note-view">${esc(d.note)}</div>`:"")}
         </div>`;
-      }).join("") : `<p class="empty-hint">Nenhum dia marcado ainda.</p>`}
-    </div>`:""}`).join("") : `<p class="empty-hint">Nenhum hábito ainda.</p>`;
+      }).join("")}
+    </div>`:""}`;
+  if(!rotina.habits.length){
+    habitListEl.innerHTML=`<p class="empty-hint">Nenhum hábito ainda.</p>`;
+  } else if(habitGroupByPeriod){
+    habitListEl.innerHTML=HABIT_PERIODS.map(p=>{
+      const inGroup=rotina.habits.filter(h=>(h.period||null)===p.key);
+      if(!inGroup.length) return "";
+      return `<p class="habit-period-hd">${p.label}</p>${inGroup.map(habitCardHTML).join("")}`;
+    }).join("");
+  } else {
+    habitListEl.innerHTML=rotina.habits.map(habitCardHTML).join("");
+  }
   habitListEl.querySelectorAll("[data-hdot]").forEach(b=>b.onclick=()=>{ const [id,ds]=b.dataset.hdot.split("|"); toggleHabitDay(id,ds); });
   habitListEl.querySelectorAll("[data-hrn]").forEach(i=>i.onchange=()=>renameHabit(i.dataset.hrn,i.value));
+  wireAutoGrowTAs(habitListEl,".hname-inp");
   habitListEl.querySelectorAll("[data-hdel]").forEach(b=>b.onclick=()=>deleteHabit(b.dataset.hdel));
   habitListEl.querySelectorAll("[data-hicon]").forEach(b=>b.onclick=()=>editHabitIcon(b.dataset.hicon));
   habitListEl.querySelectorAll("[data-hnote]").forEach(b=>b.onclick=()=>editHabitNote(b.dataset.hnote,todayStr()));
+  habitListEl.querySelectorAll("[data-hperiod]").forEach(sel=>sel.onchange=()=>setHabitPeriod(sel.dataset.hperiod,sel.value));
   habitListEl.querySelectorAll("[data-hexpand]").forEach(b=>b.onclick=()=>{ expandedHabitId = expandedHabitId===b.dataset.hexpand ? null : b.dataset.hexpand; renderRotina(c); });
-  habitListEl.querySelectorAll("[data-hclearday]").forEach(b=>b.onclick=()=>{ const [id,ds]=b.dataset.hclearday.split("|"); toggleHabitDay(id,ds); });
+  habitListEl.querySelectorAll("[data-htoggleday]").forEach(b=>b.onclick=()=>{ const [id,ds]=b.dataset.htoggleday.split("|"); toggleHabitDay(id,ds); });
+  const habitHistApplyBtn=document.getElementById("habitHistApply");
+  if(habitHistApplyBtn) habitHistApplyBtn.onclick=()=>{
+    habitHistN=Math.max(1,Number(document.getElementById("habitHistN").value)||1);
+    habitHistUnit=document.getElementById("habitHistUnit").value;
+    renderRotina(c);
+  };
+  habitListEl.querySelectorAll("[data-histquick]").forEach(b=>b.onclick=()=>{ const [n,unit]=b.dataset.histquick.split("|"); habitHistN=Number(n); habitHistUnit=unit; renderRotina(c); });
   habitListEl.querySelectorAll("[data-hnoteedit]").forEach(t=>t.onchange=()=>{
     const [id,ds]=t.dataset.hnoteedit.split("|");
     const hh=rotina.habits.find(x=>x.id===id); if(!hh) return;
@@ -2285,8 +2481,29 @@ function wireRotina(c){
     if(t.value.trim()) hh.notes[ds]=t.value.trim(); else delete hh.notes[ds];
     scheduleSave();
   });
-  habitListEl.querySelectorAll("[data-hup]").forEach(b=>b.onclick=()=>moveHabit(b.dataset.hup,-1));
-  habitListEl.querySelectorAll("[data-hdown]").forEach(b=>b.onclick=()=>moveHabit(b.dataset.hdown,1));
+  habitListEl.querySelectorAll("[data-hup]").forEach(b=>{
+    b.onclick=()=>{
+      const id=b.dataset.hup;
+      let visibleIds=null;
+      if(habitGroupByPeriod){
+        const h=rotina.habits.find(x=>x.id===id), per=h?(h.period||null):null;
+        visibleIds=rotina.habits.filter(x=>(x.period||null)===per).map(x=>x.id);
+      }
+      moveHabit(id,-1,visibleIds);
+    };
+  });
+  habitListEl.querySelectorAll("[data-hdown]").forEach(b=>{
+    b.onclick=()=>{
+      const id=b.dataset.hdown;
+      let visibleIds=null;
+      if(habitGroupByPeriod){
+        const h=rotina.habits.find(x=>x.id===id), per=h?(h.period||null):null;
+        visibleIds=rotina.habits.filter(x=>(x.period||null)===per).map(x=>x.id);
+      }
+      moveHabit(id,1,visibleIds);
+    };
+  });
+  c.querySelectorAll("[data-habitview]").forEach(b=>b.onclick=()=>{ habitGroupByPeriod=(b.dataset.habitview==="period"); scheduleSave(); renderRotina(c); });
   document.getElementById("rtHabitIconSuggest").innerHTML = HABIT_ICON_SUGGESTIONS.map(e=>`<button type="button" data-picon="${e}">${e}</button>`).join("");
   document.getElementById("rtHabitIconSuggest").querySelectorAll("[data-picon]").forEach(b=>b.onclick=()=>{ document.getElementById("rtHabitIcon").value=b.dataset.picon; });
   document.getElementById("rtHabitAdd").onclick=()=>{
@@ -2437,6 +2654,31 @@ function wireRotina(c){
     const inp=document.getElementById("rtGoalInp"), targetInp=document.getElementById("rtGoalTargetInp"), habitSel=document.getElementById("rtGoalHabitSel");
     if(inp.value.trim()){ addRotinaGoal(inp.value.trim(), Number(targetInp.value)||4, habitSel.value||null); inp.value=""; targetInp.value=""; habitSel.value=""; }
   };
+
+  // Resumo semanal (automático, sem configurar período)
+  const weeklyEl=document.getElementById("rtWeeklySummary");
+  if(weeklyEl){
+    const ws=weeklySummary();
+    const rows=[
+      {label:"Hábitos",icon:uiIcons.streak,cur:ws.thisWeek.habitPct,prev:ws.lastWeek.habitPct},
+      {label:"Água",icon:"💧",cur:ws.thisWeek.waterPct,prev:ws.lastWeek.waterPct},
+      {label:"Tarefas semanais",icon:"✅",cur:ws.thisWeek.taskPct,prev:ws.lastWeek.taskPct},
+    ];
+    weeklyEl.innerHTML=rows.map(r=>{
+      if(r.cur===null&&r.prev===null) return `<div class="weekly-row"><span>${r.icon} ${r.label}</span><span style="color:var(--muted);font-size:12px">sem dados</span></div>`;
+      const cur=r.cur??0, prev=r.prev??0, diff=cur-prev;
+      const arrow=diff>0?"▲":diff<0?"▼":"—";
+      const arrowColor=diff>0?"var(--positive)":diff<0?"var(--negative)":"var(--muted)";
+      return `<div class="weekly-row">
+        <span>${r.icon} ${r.label}</span>
+        <span style="display:flex;align-items:center;gap:10px;font-family:var(--mono)">
+          <span style="color:var(--muted);font-size:12px">${prev}% sem. passada</span>
+          <span style="font-weight:700;font-size:15px">${cur}%</span>
+          <span style="color:${arrowColor};font-size:12px">${arrow} ${Math.abs(diff)}pp</span>
+        </span>
+      </div>`;
+    }).join("");
+  }
 
   // Dashboard
   document.getElementById("rtDashApply").onclick=()=>{
