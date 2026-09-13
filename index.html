@@ -537,6 +537,8 @@ function addBook(title,totalPages,startDate,targetDate){
     startDate: startDate||todayStr(),
     targetDate: targetDate||"",
     finishedDate: null,
+    rating: 0,
+    notes: "",
     createdAt: todayStr(),
   });
   scheduleSave(); renderAll();
@@ -546,22 +548,48 @@ function setBookPage(id,page){
   const b=livros.books.find(x=>x.id===id); if(!b) return;
   const p=Math.max(0, Math.min(b.totalPages, Number(page)||0));
   b.currentPage=p;
-  if(p>=b.totalPages && b.totalPages>0 && !b.finishedDate) b.finishedDate=todayStr();
-  if(p<b.totalPages && b.finishedDate) b.finishedDate=null;
+  if(p<b.totalPages && b.finishedDate) b.finishedDate=null; // corrigiu a página pra baixo — não está mais 100% lido
   scheduleSave(); renderAll();
 }
 function toggleBookFinished(id){
   const b=livros.books.find(x=>x.id===id); if(!b) return;
-  if(b.finishedDate){ b.finishedDate=null; }
-  else { b.finishedDate=todayStr(); b.currentPage=b.totalPages; }
+  if(b.finishedDate){ b.finishedDate=null; scheduleSave(); renderAll(); return; }
+  if(b.currentPage<b.totalPages){ alert("Preencha todas as páginas (100%) antes de marcar como lido."); return; }
+  b.finishedDate=todayStr();
   scheduleSave(); renderAll();
 }
 function renameBook(id,title){ const b=livros.books.find(x=>x.id===id); if(b) b.title=title; scheduleSave(); }
 function editBookField(id,field,val){ const b=livros.books.find(x=>x.id===id); if(b) b[field]=val; scheduleSave(); }
+function setBookRating(id,val){ const b=livros.books.find(x=>x.id===id); if(b) b.rating=Number(val)||0; scheduleSave(); renderAll(); }
+function setBookNotes(id,val){ const b=livros.books.find(x=>x.id===id); if(b) b.notes=val; scheduleSave(); }
 function deleteBook(id){ livros.books=livros.books.filter(x=>x.id!==id); scheduleSave(); renderAll(); }
+function starString(rating){
+  const r=Number(rating)||0;
+  const full=Math.floor(r);
+  const half=(r-full)>=0.5;
+  return "★".repeat(full)+(half?"½":"");
+}
+function ratingOptions(current){
+  const cur=Number(current)||0;
+  const opts=[`<option value="0" ${cur===0?"selected":""}>Sem nota</option>`];
+  for(let i=1;i<=20;i++){
+    const v=i/2;
+    opts.push(`<option value="${v}" ${cur===v?"selected":""}>${v}/10 ${starString(v)}</option>`);
+  }
+  return opts.join("");
+}
+function bookRatingNotesHTML(b){
+  return `<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--muted)">Sua nota:</span>
+      <select data-bkrating="${b.id}" style="font-size:12px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--paper);color:var(--text)">${ratingOptions(b.rating)}</select>
+      ${b.rating?`<span style="font-family:var(--mono);font-weight:700;font-size:12.5px;color:var(--accent2)">${starString(b.rating)}</span>`:""}
+    </div>
+    <textarea class="hist-note-inp" data-bknote="${b.id}" placeholder="Observações sobre este livro... (frases marcantes, o que você aprendeu, etc.)" style="margin-top:8px">${esc(b.notes||"")}</textarea>`;
+}
 function bookCardHTML(b){
   const pct=bookPct(b);
   const daysLeft = b.targetDate ? Math.ceil((new Date(b.targetDate+"T00:00:00")-new Date())/86400000) : null;
+  const canFinish = b.currentPage>=b.totalPages;
   return `<div class="hcard" style="align-items:flex-start">
     <div class="hbody" style="min-width:220px">
       <textarea class="row-input hname-inp" data-bkrn="${b.id}" rows="1">${esc(b.title)}</textarea>
@@ -575,9 +603,10 @@ function bookCardHTML(b){
         <label>Previsão: <input type="date" data-bktarget="${b.id}" value="${b.targetDate||""}" style="font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--muted);padding:2px 4px"></label>
         ${b.targetDate&&daysLeft!==null?`<span style="color:${daysLeft<0?"var(--negative)":"var(--muted)"}">${daysLeft>=0?`faltam ${daysLeft}d`:`atrasado ${-daysLeft}d`}</span>`:""}
       </div>
+      ${bookRatingNotesHTML(b)}
     </div>
     <div class="hactions">
-      <button class="icon-btn" data-bkfinish="${b.id}" title="Marcar como lido">✅</button>
+      <button class="icon-btn" data-bkfinish="${b.id}" title="${canFinish?"Marcar como lido":"Preencha todas as páginas (100%) pra poder marcar como lido"}" style="${canFinish?"":"opacity:.35"}">✅</button>
       <button class="icon-btn del" data-bkdel="${b.id}">🗑</button>
     </div>
   </div>`;
@@ -587,6 +616,7 @@ function bookFinishedHTML(b){
     <div class="hbody">
       <div style="font-weight:600;padding:2px;font-size:14px">${esc(b.title)}</div>
       <div style="font-size:11.5px;color:var(--muted);margin-top:4px">${b.totalPages} páginas · lido em ${fmtDateBR(b.finishedDate)}${b.startDate?` · iniciado em ${fmtDateBR(b.startDate)}`:""}</div>
+      ${bookRatingNotesHTML(b)}
     </div>
     <div class="hactions">
       <button class="icon-btn" data-bkunfinish="${b.id}" title="Voltar pra 'lendo agora'">↩️</button>
@@ -638,12 +668,16 @@ function wireLivrosCard(){
   readingList.querySelectorAll("[data-bktarget]").forEach(inp=>inp.onchange=()=>editBookField(inp.dataset.bktarget,"targetDate",inp.value));
   readingList.querySelectorAll("[data-bkfinish]").forEach(b=>b.onclick=()=>toggleBookFinished(b.dataset.bkfinish));
   readingList.querySelectorAll("[data-bkdel]").forEach(b=>b.onclick=()=>{ if(confirm("Remover este livro?")) deleteBook(b.dataset.bkdel); });
+  readingList.querySelectorAll("[data-bkrating]").forEach(sel=>sel.onchange=()=>setBookRating(sel.dataset.bkrating,sel.value));
+  readingList.querySelectorAll("[data-bknote]").forEach(t=>t.onchange=()=>setBookNotes(t.dataset.bknote,t.value));
 
   const finishedList=document.getElementById("bkFinishedList");
   const finished=livros.books.filter(b=>b.finishedDate).sort((a,b)=>b.finishedDate.localeCompare(a.finishedDate));
   finishedList.innerHTML = finished.length? finished.map(bookFinishedHTML).join("") : `<p class="empty-hint">Nenhum livro concluído ainda.</p>`;
   finishedList.querySelectorAll("[data-bkunfinish]").forEach(b=>b.onclick=()=>toggleBookFinished(b.dataset.bkunfinish));
   finishedList.querySelectorAll("[data-bkdel]").forEach(b=>b.onclick=()=>{ if(confirm("Remover este livro?")) deleteBook(b.dataset.bkdel); });
+  finishedList.querySelectorAll("[data-bkrating]").forEach(sel=>sel.onchange=()=>setBookRating(sel.dataset.bkrating,sel.value));
+  finishedList.querySelectorAll("[data-bknote]").forEach(t=>t.onchange=()=>setBookNotes(t.dataset.bknote,t.value));
 }
 
 function syncChartColors(){
