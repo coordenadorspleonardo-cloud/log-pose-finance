@@ -570,7 +570,7 @@ function bookCardHTML(b){
         <span style="font-family:var(--mono);font-weight:700;font-size:13px;min-width:38px;text-align:right">${pct}%</span>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--muted);align-items:center">
-        <span>Página <input type="number" class="time-input" style="width:60px;text-align:left;display:inline" data-bkpage="${b.id}" value="${b.currentPage}"> de ${b.totalPages}</span>
+        <span style="display:flex;align-items:center;gap:5px">Página <input type="number" min="0" max="${b.totalPages}" data-bkpage="${b.id}" value="${b.currentPage}" title="Digite a página em que você parou" style="width:60px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--text);border:1px solid var(--line);border-radius:6px;background:var(--card);padding:3px 4px"> de ${b.totalPages}</span>
         <span>Início: ${fmtDateBR(b.startDate)}</span>
         <label>Previsão: <input type="date" data-bktarget="${b.id}" value="${b.targetDate||""}" style="font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--muted);padding:2px 4px"></label>
         ${b.targetDate&&daysLeft!==null?`<span style="color:${daysLeft<0?"var(--negative)":"var(--muted)"}">${daysLeft>=0?`faltam ${daysLeft}d`:`atrasado ${-daysLeft}d`}</span>`:""}
